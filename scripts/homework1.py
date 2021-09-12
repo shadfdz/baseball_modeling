@@ -6,4 +6,8 @@
 # import necessary modules
 import pandas as pd
 
-iris_df = pd.read_csv("../datasets/iris.data")
+# read iris dataframe
+iris_df = pd.read_csv(
+    "../datasets/iris.data",
+    names=["sepal_length", "sepal_width", "petal_length", "petal_width", "class"],
+)
