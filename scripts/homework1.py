@@ -191,7 +191,7 @@ def main():
     print("\t--Iris Class Prediction by Each Model")
     print(f"Test Classes: {y[test_index].tolist()}")
     print(f"Random forest: {randforest_prediction}")
-    print(f"Log Rtegression: {log_prediction}")
+    print(f"Log Regression: {log_prediction}")
     print(f"LDA: {lda_prediction}")
 
 
