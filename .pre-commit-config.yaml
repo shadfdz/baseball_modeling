@@ -21,7 +21,7 @@ repos:
     rev: "v2.3.2" # Use the sha or tag you want to point at
     hooks:
       - id: prettier
-  - repo: git@github.com:Yelp/detect-secrets
+  - repo: https://github.com/Yelp/detect-secrets.git
     rev: v1.1.0
     hooks:
       - id: detect-secrets

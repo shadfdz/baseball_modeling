@@ -1,8 +1,10 @@
 # PythonProject
 
-# Setup for developement:
+- This project was developed on a Mac M1 therefore Python 3.8 is recommended
 
-- Setup a python 3.x venv (usually in `.venv`)
+# Setup for development:
+
+- Setup a python 3.8 venv (usually in `.venv`)
   - You can run `./scripts/create-venv.sh` to generate one
 - `pip3 install --upgrade pip`
 - Install pip-tools `pip3 install pip-tools`
