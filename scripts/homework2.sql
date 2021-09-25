@@ -32,18 +32,25 @@ GROUP BY bc.batter, year
 ORDER BY batter, year asc;
 
 
-# 2
--- Historical RBI by each player
+-- Question 2
+-- Select historical batting average for each player
 SELECT 
 	bc.batter,
-	-- bc.atBat,
-    -- bc.Hit,
-    AVG(bc.Hit / bc.atBat) AS 'Batting Average' 
+    IFNULL(ROUND(AVG(bc.Hit /NULLIF(bc.atBat,0)),3),0) AS 'batting_avg'
 FROM baseball.game bg
 LEFT JOIN batter_counts bc on bg.game_id = bc.game_id
-GROUP BY bg.local_date, bc.batter, bc.Hit, bc.atBat
-    limit 10;
+WHERE BATTER IS NOT NULL
+GROUP BY bc.batter;
 
+DROP TABLE IF EXISTS f_historical_batting_avg;
+CREATE TABLE f_historical_batting_avg
+SELECT
+	bc.batter,
+    IFNULL(ROUND(AVG(bc.Hit /NULLIF(bc.atBat,0)),3),0) AS 'batting_avg'
+FROM baseball.game bg
+LEFT JOIN batter_counts bc on bg.game_id = bc.game_id
+WHERE BATTER IS NOT NULL
+GROUP BY bc.batter;
 
 -- Question Number 3
 
