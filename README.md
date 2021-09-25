@@ -21,3 +21,7 @@
 # Run `pre-commit` locally.
 
 `pre-commit run --all-files`
+
+# HW2 Info
+- MySql Server version 8.0.26
+- HW 2 dataset [can be found here](https://teaching.mrsharky.com/sdsu_fall_2020_lecture03.html#/10/1) 
