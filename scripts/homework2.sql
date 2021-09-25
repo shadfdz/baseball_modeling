@@ -32,66 +32,92 @@ LEFT JOIN batter_counts bc on bg.game_id = bc.game_id
 GROUP BY bg.local_date, bc.batter, bc.Hit, bc.atBat
     limit 10;
 
-# 3
 
+-- Question Number 3
+
+-- Create temp table for average batting ave of each player per day
 DROP TEMPORARY TABLE if exists batting_ave;
 CREATE TEMPORARY TABLE batting_ave
-Select
-date(bg.local_date) as 'game_date',
-count(distinct bc.game_id) as 'game_count',
-batter,
-sum(Hit) as 'Hits',
-sum(atBat) as 'atBats'
+SELECT
+    date(bg.local_date) as 'game_date',
+    batter,
+    avg(Hit/nullif(atBat,0)) as batt_ave
 FROM game bg
 JOIN batter_counts bc on bg.game_id = bc.game_id
-group by date(bg.local_date), batter
-order by game_count desc;
-
-select *
-from batting_ave
-order by game_count desc
-limit 200;
+GROUP BY date(bg.local_date), batter;
 
 
 DROP TEMPORARY TABLE if exists batting_ave_2;
 CREATE TEMPORARY TABLE batting_ave_2
-Select
-date(bg.local_date) as 'game_date',
-count(distinct bc.game_id) as 'game_count',
-batter,
-sum(Hit) as 'Hits',
-sum(atBat) as 'atBats'
+SELECT
+    date(bg.local_date) as 'game_date',
+    batter,
+    avg(Hit/nullif(atBat,0)) as batt_ave
 FROM game bg
 JOIN batter_counts bc on bg.game_id = bc.game_id
-group by date(bg.local_date), batter
-order by game_count desc;
+GROUP BY date(bg.local_date), batter;
 
-# -- select batter 407832, 112297
-
+-- Create a table of all dates played for each batter
+-- Max and Mix date played for each batter
 DROP TEMPORARY TABLE if exists DateRange;
--- set recursion depth to difference in max min date
--- change n later!
 SET SESSION cte_max_recursion_depth = 1000000;
 CREATE TEMPORARY TABLE DateRange
 WITH RECURSIVE DateRange (DateName) AS
 (
   SELECT (select date(min(game_date)) from batting_ave)
-  UNION ALL
+    UNION ALL
   SELECT adddate(DateName, 1) FROM DateRange WHERE DateName < (select date(max(game_date)) from batting_ave_2)
 )
-SELECT DateName
+SELECT
+       DateName
 FROM DateRange;
 
-DROP TEMPORARY TABLE if exists cleaned;
-CREATE temporary table cleaned
-select p.DateName, coalesce(a.Hits, 0) hits, p.batter, coalesce(a.game_count,1) game_count, coalesce(a.atBats, 0) atbats
-from
-(select batter, DateName
-from
-( select batter, min(game_date) as lowest_date, max(game_date) as highest_date
-from batting_ave
-group by batter ) q cross join DateRange b
-where b.DateName between q.lowest_date and q.highest_date
-) p left join batting_ave_2 a on p.batter = a.batter
-    and p.DateName = a.game_date
-order by batter;
+-- Cross join DateRange table to batting_ave
+-- and coalesce missing values
+-- Source: https://stackoverflow.com/questions/19075098/how-to-fill-missing-dates-by-groups-in-a-table-in-sql?rq=1
+DROP TEMPORARY TABLE if exists baseball_batting_ave;
+CREATE TEMPORARY TABLE baseball_batting_ave
+    SELECT
+        batting_date.DateName,
+        batting_date.batter,
+        round(coalesce(ba2.batt_ave, 0), 3) battingave,
+        ba2.batt_ave batting_ave
+    FROM
+        (
+        SELECT
+               batter, DateName
+        FROM
+            (
+            SELECT
+                   batter,
+                   min(game_date) as lowest_date,
+                   max(game_date) as highest_date
+            FROM batting_ave
+            GROUP BY batter ) date_param CROSS JOIN DateRange date_ranges
+            WHERE date_ranges.DateName BETWEEN date_param.lowest_date and date_param.highest_date
+            ) batting_date LEFT JOIN batting_ave_2 ba2 ON batting_date.batter = ba2.batter AND batting_date.DateName = ba2.game_date
+    ORDER BY batter;
+
+-- Create a temporary table and calculate 100 day rolling average
+DROP TEMPORARY TABLE if exists baseball_rolling_ave;
+CREATE TEMPORARY TABLE baseball_rolling_ave
+    SELECT
+        DateName AS game_date,
+        batter,
+        battingave AS batting_avg,
+        round(avg(battingave) OVER (PARTITION BY batter ORDER BY DateName ASC ROWS 100 PRECEDING),3) 100_day_rollavg
+    FROM baseball_batting_ave
+    ORDER BY batter, DateName;
+
+-- Create table of 100 day rollin average for each batter
+-- remove non playing days
+DROP TABLE IF EXISTS f_baseball_100_day_bat_avg;
+CREATE TABLE f_baseball_100_day_bat_avg
+SELECT
+    game_date,
+    batter,
+    batting_avg,
+    100_day_rollavg
+FROM baseball_rolling_ave
+WHERE batting_avg IS NOT NULL;
+
