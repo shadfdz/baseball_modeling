@@ -7,18 +7,30 @@ Date: 19-SEP-2021
 -- double check numbers, null values, and rounding rules
 -- use baseball;
 
-# 1
--- Annual RBI? by each player
+-- Question 1
+-- Select annual batting average of each player and create a table
 SELECT
-	YEAR(bg.local_date) AS 'Year',
-	bc.batter,
-	bc.atBat,
-    bc.Hit,
-    AVG(bc.Hit / bc.atBat) AS 'Batting Average'
+	YEAR(bg.local_date) AS 'year',
+    batter,
+    IFNULL(ROUND(AVG(bc.Hit /NULLIF(bc.atBat,0)),3),0) AS 'batting_avg'
 FROM baseball.game bg
 LEFT JOIN batter_counts bc on bg.game_id = bc.game_id
-GROUP BY bg.local_date, bc.batter, bc.Hit, bc.atBat
-Limit 10;
+WHERE BATTER is not null
+GROUP BY bc.batter, year
+ORDER BY batter, year asc;
+
+DROP TABLE IF EXISTS f_annual_batting_avg;
+CREATE TABLE f_annual_batting_avg
+SELECT
+	YEAR(bg.local_date) AS 'year',
+    batter,
+    IFNULL(ROUND(AVG(bc.Hit /NULLIF(bc.atBat,0)),3),0) AS 'batting_avg'
+FROM baseball.game bg
+LEFT JOIN batter_counts bc on bg.game_id = bc.game_id
+WHERE BATTER is not null
+GROUP BY bc.batter, year
+ORDER BY batter, year asc;
+
 
 # 2
 -- Historical RBI by each player
