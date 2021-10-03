@@ -4,3 +4,4 @@ scikit-learn
 plotly
 pyspark
 pyspark-stubs
+pymysql
