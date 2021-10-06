@@ -2,10 +2,6 @@
 # Author: Shad Fernandez
 # Date: 02-OCT-2021
 import sys
-import tempfile
-import requests
-
-import pymysql
 from pyspark import StorageLevel
 from pyspark.sql import SparkSession
 
@@ -15,30 +11,17 @@ def main():
     .config("spark.jars","../dbConnectors/mysql-connector-java-8.0.25.jar") \
     .getOrCreate()
 
-
-    batter_counts_df = spark.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/baseball") \
+    table = '(select g.game_id, g.local_date, bc.batter, bc.atBat bc.Hit from game g join batter_counts bc on g.game_id = bc.game_id) as rolling_lookup'
+    batter_counts_df = spark.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/baseball?zeroDateTimeBehavior=convertToNull") \
     .option("driver","com.mysql.cj.jdbc.Driver") \
-    .option("dbtable","batter_counts").option("user","root").option("password","sd.xd.mmc").load()
+    .option("dbtable",table).option("user","guest").option("password","squidgames").load()
 
-    batter_counts_df.createOrReplaceTempView("batter_counts")
+    batter_counts_df.createOrReplaceTempView("rolling_ave_lookup")
     batter_counts_df.persist(StorageLevel.DISK_ONLY)
-    # results = spark.sql("SELECT game_id, batter, atBat, Hit from batter_counts limit 10")
-    # results.show()
 
-    spark2 = SparkSession.builder.master('local[*]') \
-    .config("spark.jars","../dbConnectors/mysql-connector-java-8.0.25.jar") \
-    .getOrCreate()
+    result = spark.sql("SELECT * from rolling_ave_lookup")
+    result.show()
 
-    game_df = spark2.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/baseball") \
-    .option("driver","com.mysql.cj.jdbc.Driver") \
-    .option("dbtable","game").option("user","root").option("password","sd.xd.mmc").load()
-
-    game_df.createOrReplaceTempView("game")
-    game_df.persist(StorageLevel.DISK_ONLY)
-
-
-    # results2 = spark2.sql("SELECT game_id, local_date from game limit 20")
-    # results2.show()
 
 if __name__ == "__main__":
     sys.exit(main())
