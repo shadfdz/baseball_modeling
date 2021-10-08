@@ -5,6 +5,7 @@ import sys
 
 from pyspark import StorageLevel
 from pyspark.sql import SparkSession
+from rolling_ave_transform import BatAveRollingAveNDaysTransform
 
 
 def get_spark(driver_path):
@@ -20,64 +21,56 @@ def get_spark(driver_path):
     )
 
 
-def load_table_spark(spark_instance, url, driver, dtable, user, password):
+def load_table_spark(spark_instance, url, driver, table_list, user, passkey):
     """
-    Retrieve table from db and load to spark
+    Retrieve table(s) from db and load to spark
+    :param table_list:
     :param spark_instance: spark instance
     :param url: url of host
     :param driver: tbe db Driver
-    :param dtable: name of table
     :param user: username
-    :param password: password
-    :return: dataframe
+    :param passkey: passkey
     """
-    data_frame = (
-        spark_instance.read.format("jdbc")
-        .option(
-            "url",
-            url,
+    for name in table_list:
+        query_table = "(SELECT * FROM " + name + ") AS " + name
+        data_frame = (
+            spark_instance.read.format("jdbc")
+            .option(
+                "url",
+                url,
+            )
+            .option("driver", driver)
+            .option("dbtable", query_table)
+            .option("user", user)
+            .option("password", passkey)
+            .load()
         )
-        .option("driver", driver)
-        .option("dbtable", dtable)
-        .option("user", user)
-        .option("password", password)
-        .load()
-    )
-
-    data_frame.createOrReplaceTempView("batter_counts")
-
-    return data_frame
+        data_frame.persist(StorageLevel.DISK_ONLY)
+        data_frame.createOrReplaceTempView(name)
 
 
 def main():
-
+    # Get path to db connector and get spark to start spark session
     connector_file_path = "../dbConnectors/mysql-connector-java-8.0.25.jar"
     spark = get_spark(connector_file_path)
-    game_batter_counts_table = "(select g.game_id, g.local_date, bc.batter, bc.atBat, bc.Hit from game g join batter_counts bc on g.game_id \
-     = bc.game_id) as rolling_lookup"
 
+    # set variables for parameters to get tables from mysql
     url = "jdbc:mysql://localhost:3306/baseball?zeroDateTimeBehavior=convertToNull"
     driver = "com.mysql.cj.jdbc.Driver"
     user = "guest"
-    password = "squidgames"
-    view_name = "batter_counts"
-    batter_counts = load_table_spark(
-        spark, url, driver, game_batter_counts_table, user, password, view_name
-    )
-    batter_counts.persist(StorageLevel.DISK_ONLY)
+    passkey = "squidgames"
+    table_list = ["game", "batter_counts"]
 
+    # retrieve tables and load to spark
+    load_table_spark(spark, url, driver, table_list, user, passkey)
 
-    rolling_ave_query = "Select r11.batter, r11.game_id, r11.local_date,  \
-                        round(sum(r12.Hit)/sum(r12.atBat),4) as batting_ave from \
-                        (select game_id, local_date, batter, atBat, Hit from batter_counts \
-                        where atBat > 0 order by batter, local_date) r11 \
-                        join (select game_id, local_date, batter, atBat, Hit from batter_counts \
-                        where atBat > 0 order by batter, local_date) r12 on r11.batter = r12.batter \
-                        and r12.local_date between date_sub(r11.local_date, 100) and r11.local_date \
-                        group by r11.batter, r11.game_id, r11.local_date order by batter, local_date"
+    # use transformer to retrieve df with n days of batting ave rolling ave
+    # set at 100 days for this examples
+    rolling_ave_transform = BatAveRollingAveNDaysTransform(inputCols=["100"])
+    rolling_ave_100_days_df = rolling_ave_transform.transform(spark)
 
-    rolling_ave_df = spark.sql(rolling_ave_query)
-    rolling_ave_df.show()
+    # show dataframe
+    rolling_ave_100_days_df.show()
 
 
 if __name__ == "__main__":
