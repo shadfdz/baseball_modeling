@@ -26,3 +26,8 @@
 
 - MySql Server version 8.0.26
 - HW 2 dataset [can be found here](https://teaching.mrsharky.com/sdsu_fall_2020_lecture03.html#/10/1)
+
+# HW4 Info
+
+- Please enter respective pass key for db credentials and access
+- JDBC connector for MySql Server version 8.0.26 located under dbConnectors folder
