@@ -46,6 +46,6 @@ class BatAveRollingAveNDaysTransform(Transformer, HasInputCols):
         spark.sql(rolling_ave_query)
 
         # return rolling ave table as data frame
-        dataset = spark.sql("SELECT * FROM rolling_ave_100")
+        dataset = spark.sql("SELECT * FROM rolling_ave_100 Order by batter, local_date")
 
         return dataset
