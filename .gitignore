@@ -150,7 +150,7 @@ cython_debug/
 media
 static
 
-# Project related ignores (place project related ignores below here)
-./datasets/baseball.sql
-./.DS_Store
+# Mac
+datasets/baseball.sql
+.DS_Store
 
