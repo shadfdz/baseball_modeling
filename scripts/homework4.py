@@ -3,42 +3,42 @@
 # BDA 696 HW4
 
 import pandas as pd
+import plot_pred_response as prr
 
-df = pd.read_csv("../datasets/iris.csv")
-
-# assign predictors and response
-# predictors = df.columns[[0, 1, 2, 4]]
-# response = df.columns[3]
-# data_type = {}
+df = pd.read_csv("../datasets/Iris.csv")
 print(df.dtypes)
-# print(test)
 
-response = ["sepal_length"]
-predictors = ["sepal_width", "petal_length", "petal_width", "Class"]
+response = ["Class"]
+predictors = ["sepal_width", "petal_length", "petal_width"]
 
 # loop through predictors
 # check using feature data type classifier
-pred_col_dtype_dict = {}
+feature_type_dict = {}
 for col in df.columns:
     # may change to like 'int' since could be int32
     if df[col].dtype == "int64":
         if df[col].unique().size == 2:
-            pred_col_dtype_dict[col] = "categorical"
+            feature_type_dict[col] = "categorical"
         else:
-            pred_col_dtype_dict[col] = "continuous"
+            feature_type_dict[col] = "continuous"
     elif df[col].dtype == "float64":
-        pred_col_dtype_dict[col] = "continuous"
+        feature_type_dict[col] = "continuous"
     else:
-        pred_col_dtype_dict[col] = "categorical"
-
-for val in pred_col_dtype_dict.keys():
-    print(val + " " + pred_col_dtype_dict.get(val))
+        feature_type_dict[col] = "categorical"
 
 # generate necessary plots
-# loop through predictor list
-# check dictionary
-# if cat response -> pred boolean - heat plot
-# if cat response -> pred continous - violin plot on pred grouped by response or distr
+feature_plotter = prr.PlotPredictorResponse(df, feature_type_dict)
+for pred in predictors:
+    if feature_type_dict.get(response[0]) == "continuous":
+        if feature_type_dict.get(pred) == "continuous":
+            feature_plotter.cont_resp_cont_pred(response[0], pred)
+        else:
+            feature_plotter.cont_resp_cat_pred(response[0], pred)
+    else:
+        if feature_type_dict.get(pred) == "categorical":
+            feature_plotter.cat_resp_cat_pred(response[0], pred)
+        else:
+            feature_plotter.cat_resp_cont_pred(response[0], pred)
 
 
 # calculate t and p values
