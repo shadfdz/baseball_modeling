@@ -2,15 +2,33 @@ import pandas as pd
 from plotly import express as px
 from plotly import figure_factory as ff
 from plotly import graph_objects as go
+from plotly.subplots import make_subplots
 from sklearn.metrics import confusion_matrix
-
-# one main call function that takes the input and determines which function to use to plot
 
 
 class PlotPredictorResponse:
-    def __init__(self, dataframe, feature_type_dictionary):
-        self.df = dataframe
-        self.df_feat_type_dict = feature_type_dictionary
+    """
+    The class takes a data frame and a dictionary of columns containing each
+    data type
+    """
+
+    def __init__(self, Dataframe, feature_type_dictionary):
+        self.df = Dataframe
+        self.feature_type_dict = feature_type_dictionary
+
+    def plot_auto(self, response, predictors):
+
+        for pred in predictors:
+            if self.feature_type_dict.get(response[0]) == "continuous":
+                if self.feature_type_dict.get(pred) == "continuous":
+                    self.cont_resp_cont_pred(response[0], pred)
+                else:
+                    self.cont_resp_cat_pred(response[0], pred)
+            else:
+                if self.feature_type_dict.get(pred) == "boolean":
+                    self.cat_resp_cat_pred(response[0], pred)
+                else:
+                    self.cat_resp_cont_pred(response[0], pred)
 
     def cat_resp_cont_pred(self, response, predictor):
 
@@ -93,5 +111,39 @@ class PlotPredictorResponse:
         fig.show()
         fig.write_html(
             file="../plots/" + response + "by" + predictor + ".html",
+            include_plotlyjs="cdn",
+        )
+
+    def plot_diff_with_MOR(self, df_bins, response, pred):
+
+        bin_cat_list = df_bins["Bin"].tolist()
+        cat = []
+        for num in bin_cat_list:
+            cat.append(str(num))
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(
+            go.Bar(x=cat, y=df_bins["Counts"], name="Population"),
+            secondary_y=False,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=cat,
+                y=df_bins["Means"] - df_bins["PopMean"],
+                name="BinMeanResponse-PopMeanResponse",
+            ),
+            secondary_y="True",
+        )
+
+        fig.update_layout(
+            title_text="Binned Difference with Mean of Response vs Bin <br><sup>Response,Predictor: "
+            + response
+            + ","
+            + pred
+        )
+
+        fig.show()
+        fig.write_html(
+            file="../plots/" + response + "by" + pred + ".html",
             include_plotlyjs="cdn",
         )

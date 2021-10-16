@@ -4,6 +4,7 @@
 
 import sys
 
+import binresponsebypredictor as bin
 import pandas as pd
 import plot_pred_response as prr
 import statsmodels.api as stats
@@ -11,40 +12,33 @@ import statsmodels.api as stats
 
 def main():
     df = pd.read_csv("../datasets/Iris.csv")
-    print(df.dtypes)
+    print(df.columns)
+    response_col = str(input("Please enter the column name of the response variable: "))
+    response = [response_col]
+    predictors = df.loc[:, ~df.columns.isin(response)].columns.to_list()
+    print("Response:" + response[0])
+    print("Predictors:")
+    print(predictors)
 
-    response = ["sepal_length"]
-    predictors = ["sepal_width", "petal_length", "petal_width"]
-
-    # loop through predictors
-    # check using feature data type classifier
+    # loop through predictors and assign if boolean or continuous
     feature_type_dict = {}
     for col in df.columns:
-        # may change to like 'int' since could be int32
         if df[col].dtype == "int64":
             if df[col].unique().size == 2:
-                feature_type_dict[col] = "categorical"
+                feature_type_dict[col] = "boolean"
             else:
                 feature_type_dict[col] = "continuous"
         elif df[col].dtype == "float64":
             feature_type_dict[col] = "continuous"
         else:
-            feature_type_dict[col] = "categorical"
+            feature_type_dict[col] = "boolean"
 
-    # generate necessary plots
+    # generate instance of PlotPredictorResponse
     feature_plotter = prr.PlotPredictorResponse(df, feature_type_dict)
-    for pred in predictors:
-        if feature_type_dict.get(response[0]) == "continuous":
-            if feature_type_dict.get(pred) == "continuous":
-                feature_plotter.cont_resp_cont_pred(response[0], pred)
-            else:
-                feature_plotter.cont_resp_cat_pred(response[0], pred)
-        else:
-            if feature_type_dict.get(pred) == "categorical":
-                feature_plotter.cat_resp_cat_pred(response[0], pred)
-            else:
-                feature_plotter.cat_resp_cont_pred(response[0], pred)
+    # auto generate plot based on response data type
+    feature_plotter.plot_auto(response, predictors)
 
+    # create models and fit according to dtype
     if feature_type_dict.get(response[0]) == "continuous":
         for pred in predictors:
             if feature_type_dict.get(pred) == "continuous":
@@ -57,8 +51,6 @@ def main():
             else:
                 print("Please include at least one continuous predictor")
     else:
-        # convert response to dummy code dummy!
-        # when error is thrown catch near zero variance
         resp_dummy = pd.get_dummies(df[response[0]])
         resp_dummy_df = resp_dummy.iloc[:, 1]
         for pred in predictors:
@@ -70,55 +62,60 @@ def main():
             else:
                 print("Please include at least one continuous predictor")
 
-    df["bin_cat"], bin_array = pd.cut(x=df["sepal_length"], bins=10, retbins=True)
-    print(bin_array)
-    bin_center = []
-    for indx, val in enumerate(bin_array):
-        if indx != 0:
-            bin_center.append(round((val + bin_array[indx - 1]) / 2, 5))
-
-    bins_cat = df["bin_cat"].sort_values().unique()
-    pop_mean = df["sepal_length"].mean()
-    data_frame_list = []
-    data_frame_columns = ["Bin", "Center", "Counts", "Means", "PopMean", "MeanSqrDiff"]
-    for cat, binCenter in zip(bins_cat, bin_center):
-        temp_list = []
-        temp_list.append(cat)
-        temp_list.append(binCenter)
-        temp_list.append(df["sepal_length"][(df["bin_cat"] == cat)].count())
-        temp_list.append(df["sepal_length"][(df["bin_cat"] == cat)].mean())
-        temp_list.append(pop_mean)
-        temp_list.append(
-            ((df["sepal_length"][(df["bin_cat"] == cat)].mean() - pop_mean) ** 2) / 2
-        )
-        # pop_prop_list.append(bin_count / len(df.index))
-        data_frame_list.append(temp_list)
-
-    bin_df_unweighted = pd.DataFrame(data_frame_list, columns=data_frame_columns)
-
-    print(bin_df_unweighted)
-
-    # data_frame_list = []
-    # data_frame_columns = ['Bin','BinCenters','BinCounts','BinMeans(ui)','PopulationMean','MeanSquareDiff',
-    # 'PopProportion','MeanSquaredDiffWeighted']
-    # for cat, binCenter in zip(bins_cat, bin_center):
-    #     temp_list = []
-    #     temp_list.append(cat)
-    #     temp_list.append(binCenter)
-    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count())
-    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].mean())
-    #     temp_list.append(pop_mean)
-    #     temp_list.append(((df['sepal_length'][(df['bin_cat'] == cat)].mean() - pop_mean) ** 2) / 2)
-    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count() / len(df.index))
-    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count() / len(df.index))
-    #
-    #     print(bin_df_unweighted)
-    #     data_frame_list.append(temp_list)
-    #
-    # bin_df_weighted = pd.DataFrame(data_frame_list, columns=data_frame_columns)
-    #
-    # print(bin_df_weighted)
-    #
+    # Difference with Mean of Response vs Bin for Each predictor
+    bin_response = bin.BinResponseByPredictor(df)
+    if feature_type_dict.get(response[0]) == "continuous":
+        for pred in predictors:
+            if feature_type_dict.get(pred) == "continuous":
+                df_bin = bin_response.bin_cont_resp_cont_pred(response[0], pred)
+                print("Difference with Mean of Response Unweighted")
+                print(
+                    df_bin.loc[
+                        :,
+                        ~df_bin.columns.isin(["PopProportion", "MeanSqrDiffWeighted"]),
+                    ]
+                )
+                print("Difference with Mean of Response Weighted")
+                print(df_bin)
+                feature_plotter.plot_diff_with_MOR(df_bin, response[0], pred)
+            else:
+                df_bin = bin_response.bin_cont_resp_cat_pred(response[0], pred)
+                print("Difference with Mean of Response Unweighted")
+                print(
+                    df_bin.loc[
+                        :,
+                        ~df_bin.columns.isin(["PopProportion", "MeanSqrDiffWeighted"]),
+                    ]
+                )
+                print("Difference with Mean of Response Weighted")
+                print(df_bin)
+                feature_plotter.plot_diff_with_MOR(df_bin, response[0], pred)
+    else:
+        for pred in predictors:
+            if feature_type_dict.get(pred) == "boolean":
+                df_bin = bin_response.bin_cat_resp_cat_pred(response[0], pred)
+                print("Difference with Mean of Response Unweighted")
+                print(
+                    df_bin.loc[
+                        :,
+                        ~df_bin.columns.isin(["PopProportion", "MeanSqrDiffWeighted"]),
+                    ]
+                )
+                print("Difference with Mean of Response Weighted")
+                print(df_bin)
+                feature_plotter.plot_diff_with_MOR(df_bin, response[0], pred)
+            else:
+                df_bin = bin_response.bin_cat_resp_cont_pred(response[0], pred)
+                print("Difference with Mean of Response Unweighted")
+                print(
+                    df_bin.loc[
+                        :,
+                        ~df_bin.columns.isin(["PopProportion", "MeanSqrDiffWeighted"]),
+                    ]
+                )
+                print("Difference with Mean of Response Weighted")
+                print(df_bin)
+                feature_plotter.plot_diff_with_MOR(df_bin, response[0], pred)
 
     # Random forest variable importance ranking for continuous variables
     # generate table and all ranking
