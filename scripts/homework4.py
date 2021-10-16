@@ -13,7 +13,7 @@ def main():
     df = pd.read_csv("../datasets/Iris.csv")
     print(df.dtypes)
 
-    response = ["Class"]
+    response = ["sepal_length"]
     predictors = ["sepal_width", "petal_length", "petal_width"]
 
     # loop through predictors
@@ -50,7 +50,9 @@ def main():
             if feature_type_dict.get(pred) == "continuous":
                 predictor = stats.add_constant(df[pred])
                 lin_reg_model_fit = stats.OLS(df[response[0]], predictor).fit()
-                print("Linear regression model {} against {}".format(pred, response[0]))
+                print(
+                    "/nLinear regression model {} against {}".format(pred, response[0])
+                )
                 print(lin_reg_model_fit.summary())
             else:
                 print("Please include at least one continuous predictor")
@@ -68,7 +70,56 @@ def main():
             else:
                 print("Please include at least one continuous predictor")
 
-    # difference with mean response along  with its plot (check lecture)
+    df["bin_cat"], bin_array = pd.cut(x=df["sepal_length"], bins=10, retbins=True)
+    print(bin_array)
+    bin_center = []
+    for indx, val in enumerate(bin_array):
+        if indx != 0:
+            bin_center.append(round((val + bin_array[indx - 1]) / 2, 5))
+
+    bins_cat = df["bin_cat"].sort_values().unique()
+    pop_mean = df["sepal_length"].mean()
+    data_frame_list = []
+    data_frame_columns = ["Bin", "Center", "Counts", "Means", "PopMean", "MeanSqrDiff"]
+    for cat, binCenter in zip(bins_cat, bin_center):
+        temp_list = []
+        temp_list.append(cat)
+        temp_list.append(binCenter)
+        temp_list.append(df["sepal_length"][(df["bin_cat"] == cat)].count())
+        temp_list.append(df["sepal_length"][(df["bin_cat"] == cat)].mean())
+        temp_list.append(pop_mean)
+        temp_list.append(
+            ((df["sepal_length"][(df["bin_cat"] == cat)].mean() - pop_mean) ** 2) / 2
+        )
+        # pop_prop_list.append(bin_count / len(df.index))
+        data_frame_list.append(temp_list)
+
+    bin_df_unweighted = pd.DataFrame(data_frame_list, columns=data_frame_columns)
+
+    print(bin_df_unweighted)
+
+    # data_frame_list = []
+    # data_frame_columns = ['Bin','BinCenters','BinCounts','BinMeans(ui)','PopulationMean','MeanSquareDiff',
+    # 'PopProportion','MeanSquaredDiffWeighted']
+    # for cat, binCenter in zip(bins_cat, bin_center):
+    #     temp_list = []
+    #     temp_list.append(cat)
+    #     temp_list.append(binCenter)
+    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count())
+    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].mean())
+    #     temp_list.append(pop_mean)
+    #     temp_list.append(((df['sepal_length'][(df['bin_cat'] == cat)].mean() - pop_mean) ** 2) / 2)
+    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count() / len(df.index))
+    #     temp_list.append(df['sepal_length'][(df['bin_cat'] == cat)].count() / len(df.index))
+    #
+    #     print(bin_df_unweighted)
+    #     data_frame_list.append(temp_list)
+    #
+    # bin_df_weighted = pd.DataFrame(data_frame_list, columns=data_frame_columns)
+    #
+    # print(bin_df_weighted)
+    #
+
     # Random forest variable importance ranking for continuous variables
     # generate table and all ranking
 
