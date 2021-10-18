@@ -10,33 +10,43 @@ import plot_pred_response as prr
 import statsmodels.api as stats
 
 
+def get_col_type_dict(dataframe):
+    """
+
+    :param dataframe:
+    :return:
+    """
+    feature_type_dict = {}
+    for col in dataframe.columns:
+        if dataframe[col].dtype == "int64":
+            if dataframe[col].unique().size == 2:
+                feature_type_dict[col] = "boolean"
+            else:
+                feature_type_dict[col] = "continuous"
+        elif dataframe[col].dtype == "float64":
+            feature_type_dict[col] = "continuous"
+        else:
+            feature_type_dict[col] = "boolean"
+    return feature_type_dict
+
+
 def main():
     df = pd.read_csv("../datasets/Iris.csv")
     print(df.columns)
-    response_col = str(input("Please enter the column name of the response variable: "))
-    response = [response_col]
+    # response_col = str(input("Please enter the column name of the response variable: "))
+    response = ["petal_width"]
     predictors = df.loc[:, ~df.columns.isin(response)].columns.to_list()
-    print("Response:" + response[0])
+    print("Response: " + response[0])
     print("Predictors:")
     print(predictors)
 
     # loop through predictors and assign if boolean or continuous
-    feature_type_dict = {}
-    for col in df.columns:
-        if df[col].dtype == "int64":
-            if df[col].unique().size == 2:
-                feature_type_dict[col] = "boolean"
-            else:
-                feature_type_dict[col] = "continuous"
-        elif df[col].dtype == "float64":
-            feature_type_dict[col] = "continuous"
-        else:
-            feature_type_dict[col] = "boolean"
+    feature_type_dict = get_col_type_dict(df)
 
     # generate instance of PlotPredictorResponse
     feature_plotter = prr.PlotPredictorResponse(df, feature_type_dict)
-    # auto generate plot based on response data type
-    feature_plotter.plot_auto(response, predictors)
+    # # auto generate plot based on response data type
+    # feature_plotter.plot_auto(response, predictors)
 
     # create models and fit according to dtype
     if feature_type_dict.get(response[0]) == "continuous":
@@ -60,7 +70,8 @@ def main():
                 print("Log regression model {} against {}".format(pred, response[0]))
                 print(log_reg_model_fit.summary())
             else:
-                print("Please include at least one continuous predictor")
+                # change this logic
+                print("cccheee Please include at least one continuous predictor")
 
     # Difference with Mean of Response vs Bin for Each predictor
     bin_response = bin.BinResponseByPredictor(df)
