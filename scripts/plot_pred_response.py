@@ -12,23 +12,23 @@ class PlotPredictorResponse:
     data type
     """
 
-    def __init__(self, Dataframe, feature_type_dictionary):
-        self.df = Dataframe
+    def __init__(self, dataframe, feature_type_dictionary):
+        self.df = dataframe
         self.feature_type_dict = feature_type_dictionary
 
-    def plot_auto(self, response, predictors):
+    def plot_response_by_predictors(self, response, predictors):
 
         for pred in predictors:
-            if self.feature_type_dict.get(response[0]) == "continuous":
+            if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    self.cont_resp_cont_pred(response[0], pred)
+                    self.cont_resp_cont_pred(response, pred)
                 else:
-                    self.cont_resp_cat_pred(response[0], pred)
+                    self.cont_resp_cat_pred(response, pred)
             else:
                 if self.feature_type_dict.get(pred) == "boolean":
-                    self.cat_resp_cat_pred(response[0], pred)
+                    self.cat_resp_cat_pred(response, pred)
                 else:
-                    self.cat_resp_cont_pred(response[0], pred)
+                    self.cat_resp_cont_pred(response, pred)
 
     def cat_resp_cont_pred(self, response, predictor):
 
