@@ -6,3 +6,4 @@ pyspark
 pyspark-stubs
 pymysql
 statsmodels
+seaborn
