@@ -8,6 +8,8 @@ import bin_response_by_predictor as bin
 import pandas as pd
 import plot_pred_response as prr
 import statsmodels.api as stats
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
 
 pd.set_option("display.width", 200)
 pd.set_option("display.max_columns", 10)
@@ -47,9 +49,22 @@ def get_log_model_fit(df, response, pred):
     return log_reg_model_fit
 
 
+def get_response_predictors(df):
+    print("The following are features of the dataset: ")
+    print(*df.columns)
+    response_feature = str(
+        input("\nPlease enter the column name of the response variable: ")
+    )
+    resp = [response_feature]
+    preds = df.loc[:, ~df.columns.isin(resp)].columns.to_list()
+    print("Response: " + resp[0])
+    print("Predictors:", *preds)
+    return resp, preds
+
+
 def main():
     # retrieve data
-    df = pd.read_csv("../datasets/Iris.csv")
+    df = pd.read_csv("../datasets/iris.csv")
     print("The following are features of the dataset: ")
     print(*df.columns)
     response_feature = str(
@@ -59,9 +74,16 @@ def main():
     predictors = df.loc[:, ~df.columns.isin(response)].columns.to_list()
     print("Response: " + response[0])
     print("Predictors:", *predictors)
+    response, predictors = get_response_predictors(df)
+
+    print(df.head())
+    print(df.columns)
 
     # loop through predictors and assign if boolean or continuous using get_col_type_dict
     feature_type_dict = get_col_type_dict(df)
+
+    for obj in feature_type_dict.keys():
+        print(obj + " " + feature_type_dict.get(obj))
 
     # create instance of PlotPredictorResponse to generate plots
     feature_plotter = prr.PlotPredictorResponse(df, feature_type_dict)
@@ -83,7 +105,7 @@ def main():
             model_dict[pred] = get_log_model_fit(df, response[0], pred)
         else:
             print(
-                "\nNo model was generated for the feature '"
+                "\nWarning: No model was generated for the feature '"
                 + pred
                 + "', only continuous predictors are used\n"
             )
@@ -116,8 +138,24 @@ def main():
             )
         )
 
-    # Random forest variable importance ranking for continuous variables
-    # generate table and all ranking
+    # create a random forest model and rank variables by importance
+    model_df = df.copy()
+    if feature_type_dict.get(response[0]) == "continuous":
+        for pred in predictors:
+            if feature_type_dict.get(pred) == "boolean":
+                label_encoder = LabelEncoder()
+                model_df[pred] = label_encoder.fit_transform(df[pred])
+        random_forest_model = RandomForestRegressor()
+        random_forest_model.fit(model_df[predictors], model_df[response[0]])
+        var_importance = random_forest_model.feature_importances_
+        for i, score in enumerate(var_importance):
+            print("Feature: {}\t\tScore {:.6f}".format(predictors[i], score))
+    else:
+        random_forest_model = RandomForestClassifier()
+        random_forest_model.fit(df[predictors], df[response[0]])
+        var_importance = random_forest_model.feature_importances_
+        for i, score in enumerate(var_importance):
+            print("Feature: {}\t\tScore: {:.6f}".format(predictors[i], score))
 
 
 if __name__ == "__main__":
