@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from plotly import express as px
 from plotly import figure_factory as ff
@@ -18,6 +19,7 @@ class PlotPredictorResponse:
 
     def plot_response_by_predictors(self, response, predictors):
 
+        print(self.feature_type_dict.get(response))
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
@@ -25,33 +27,43 @@ class PlotPredictorResponse:
                 else:
                     self.cont_resp_cat_pred(response, pred)
             else:
-                if self.feature_type_dict.get(pred) == "boolean":
-                    self.cat_resp_cat_pred(response, pred)
-                else:
+                if self.feature_type_dict.get(pred) == "continuous":
                     self.cat_resp_cont_pred(response, pred)
+                else:
+                    self.cat_resp_cat_pred(response, pred)
 
     def cat_resp_cont_pred(self, response, predictor):
 
-        categories = self.df[response].unique()
+        df_plot_temp = self.df[self.df[predictor].notnull()]
+        categories = df_plot_temp[response].unique()
+        x1 = df_plot_temp[predictor][df_plot_temp[response] == categories[0]]
+        x2 = df_plot_temp[predictor][df_plot_temp[response] == categories[1]]
+        categories = df_plot_temp[response].unique()
 
-        for cat in categories:
-            x1 = self.df[predictor][(self.df[response] == cat)]
-            x2 = self.df[predictor][(self.df[response] != cat)]
+        hist_data = [x1, x2]
 
-            hist_data = [x1, x2]
-            group_labels = ["Response = not " + cat, "Response = " + cat]
+        group_labels = [
+            "Response = " + str(categories[0]),
+            "Response = " + str(categories[1]),
+        ]
 
-            fig_1 = ff.create_distplot(hist_data, group_labels, bin_size=0.2)
-            fig_1.update_layout(
-                title=predictor + " by " + cat + " as response",
-                xaxis_title=predictor,
-                yaxis_title="Distribution",
+        fig_2 = go.Figure()
+        for curr_hist, curr_group in zip(hist_data, group_labels):
+            fig_2.add_trace(
+                go.Violin(
+                    x=np.repeat(curr_group, len(curr_group)),
+                    y=curr_hist,
+                    name=curr_group,
+                    box_visible=True,
+                    meanline_visible=True,
+                )
             )
-            fig_1.show()
-            fig_1.write_html(
-                file="../plots/" + cat + "by" + predictor + ".html",
-                include_plotlyjs="cdn",
-            )
+        fig_2.update_layout(
+            title=response + " by " + predictor,
+            xaxis_title=response,
+            yaxis_title=predictor,
+        )
+        fig_2.show()
 
     def cont_resp_cat_pred(self, response, predictor):
 
@@ -87,7 +99,7 @@ class PlotPredictorResponse:
         )
 
         fig_no_relationship.update_layout(
-            title=response + predictors + " (without relationship)",
+            title=response + " by " + predictors,
             xaxis_title=response,
             yaxis_title=predictors,
         )
