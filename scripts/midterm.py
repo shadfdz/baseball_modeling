@@ -1,8 +1,10 @@
 import sys
 
 import cat_correlation as cc
+import matplotlib.pyplot as plt
 import pandas as pd
 import plot_pred_response as ppr
+import seaborn as sns
 from scipy import stats
 
 pd.set_option("display.width", 200)
@@ -72,7 +74,6 @@ def main():
         for pred_inner in cont_predictors:
             if pred_outer != pred_inner:
                 df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-                # print(pred_outer, pred_inner, stats.pearsonr(df_corr[pred_outer], df_corr[pred_inner])[0])
                 temp_corr_row = [
                     pred_outer,
                     pred_inner,
@@ -80,15 +81,10 @@ def main():
                 ]
                 corr_temp_list.append(temp_corr_row)
 
-    # print correlation metrics for each categorical cont predictor
+    # print correlation metrics for each categorical predictor
     for pred_outer in cat_predictors:
         for pred_inner in cat_predictors:
             if pred_outer != pred_inner:
-                # print(
-                #     pred_outer,
-                #     pred_inner,
-                #     cc.cat_correlation(df[pred_outer], df[pred_inner]),
-                # )
                 temp_corr_row = [
                     pred_outer,
                     pred_inner,
@@ -96,15 +92,10 @@ def main():
                 ]
                 corr_temp_list.append(temp_corr_row)
 
-    # print correlation metrics for each categorical predictor
+    # print correlation metrics for each categorical cont predictor
     for pred_outer in cat_predictors:
         for pred_inner in cont_predictors:
             if pred_outer != pred_inner:
-                # print(
-                #     pred_outer,
-                #     pred_inner,
-                #     cc.cat_cont_correlation_ratio(df[pred_outer], df[pred_inner]),
-                # )
                 temp_corr_row = [
                     pred_outer,
                     pred_inner,
@@ -117,13 +108,53 @@ def main():
     correlation_df = correlation_df.sort_values(by="Correlation", ascending=False)
     print(correlation_df)
 
-    # put links to original variable plot done in hw4
+    # # put links to original variable plot done in hw4
     resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
     resp_pred_plotter.plot_response_by_predictors(response, predictors)
 
+    # WIP IN PROGRESS 24-OCT-2021
     # generate correlation matrices for the above three
-
     # print heat map of all three combinations
+
+    # generate correlation matrix for each cont cont predictor
+    df_corr_cont = df[cont_predictors].corr()
+    print(type(df_corr_cont))
+    print(df_corr_cont)
+    sns.heatmap(df_corr_cont)
+
+    # generate correlation metrics for each categorical cont predictor
+    corr_matrix_df_list = []
+    for pred_outer in cat_predictors:
+        corr_matrix_temp_list = []
+        for pred_inner in cont_predictors:
+            corr_matrix_temp_list.append(
+                cc.cat_cont_correlation_ratio(df[pred_outer], df[pred_inner])
+            )
+        corr_matrix_df_list.append(corr_matrix_temp_list)
+
+    df_corr_matrix = pd.DataFrame(
+        corr_matrix_df_list, columns=cont_predictors, index=cat_predictors
+    )
+    print(df_corr_matrix)
+    sns.heatmap(df_corr_matrix, annot=True)
+    plt.show()
+
+    # generate correlation metrics for each cat cat predictor
+    corr_matrix_df_list = []
+    for pred_outer in cat_predictors:
+        corr_matrix_temp_list = []
+        for pred_inner in cat_predictors:
+            corr_matrix_temp_list.append(
+                cc.cat_correlation(df[pred_outer], df[pred_inner])
+            )
+        corr_matrix_df_list.append(corr_matrix_temp_list)
+
+    df_corr_matrix = pd.DataFrame(
+        corr_matrix_df_list, columns=cat_predictors, index=cat_predictors
+    )
+    print(df_corr_matrix)
+    sns.heatmap(df_corr_matrix, annot=True)
+    plt.show()
 
 
 if __name__ == "__main__":
