@@ -1,5 +1,6 @@
 import sys
 
+import bin_response_by_predictor as brp
 import cat_correlation as cc
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -67,6 +68,7 @@ def main():
     print(cat_predictors)
     print(cont_predictors)
 
+    # create correlation metrics for each predictor
     corr_temp_list = []
     corr_col_names = ["Predictor1", "Predictor2", "Correlation"]
     # # print correlation metrics for each continuous predictor
@@ -112,7 +114,6 @@ def main():
     resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
     resp_pred_plotter.plot_response_by_predictors(response, predictors)
 
-    # WIP IN PROGRESS 24-OCT-2021
     # generate correlation matrices for the above three
     # print heat map of all three combinations
 
@@ -155,6 +156,49 @@ def main():
     print(df_corr_matrix)
     sns.heatmap(df_corr_matrix, annot=True)
     plt.show()
+
+    # WIP
+
+    df["CatAge"], bin_array1 = pd.cut(x=df["Age"], bins=10, retbins=True)
+
+    df["CatFare"], bin_array2 = pd.cut(x=df["Fare"], bins=10, retbins=True)
+
+    df["Join"] = df["CatAge"].astype(str) + "," + df["CatFare"].astype(str)
+
+    # df_temp_heatmap = df[['Join','Age']].groupby('Join').count()
+    # df_temp_heatmap['AveAge'] = df[['Join','Age']].groupby('Join').mean()
+
+    df_temp_heatmap = df[["Join", "Fare"]].groupby("Join").count()
+    df_temp_heatmap["AveFare"] = df[["Join", "Fare"]].groupby("Join").mean()
+
+    df_temp_heatmap["Resp"] = df[["Join", "Survived"]].groupby("Join").mean()
+    df_temp_heatmap.reset_index(inplace=True)
+    print(df_temp_heatmap)
+
+    list1 = df["CatAge"].unique().sort_values()
+    list2 = df["CatFare"].unique().sort_values()
+
+    df_list = []
+    for outer_bin in list1:
+        temp_list = []
+        for inner_bin in list2:
+            bin_array = str(outer_bin) + "," + str(inner_bin)
+            val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
+            if val.size == 0:
+                temp_list.append(0)
+            else:
+                temp_list.append(val.iloc[0])
+        df_list.append(temp_list)
+
+    temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
+    print(temp_df)
+
+    sns.heatmap(temp_df, annot=True)
+    plt.show()
+
+    binned = brp.BinResponseByPredictor(df, feature_type_dict, 10)
+
+    binned.bin_2d_cont_resp_cont_pred(df, response, "Age", "Fare", 10)
 
 
 if __name__ == "__main__":
