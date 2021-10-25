@@ -90,6 +90,7 @@ class BinResponseByPredictor:
         return bin_df
 
     def bin_cat_resp_cont_pred(self, response, pred, bin_counts=None):
+
         if bin_counts is None:
             bin_counts = self.bin_count
         # dummy response
@@ -117,6 +118,45 @@ class BinResponseByPredictor:
         self.df = self.df.drop(columns=["DummyResponse", "bin_cat"], axis=1)
 
         return bin_df
+
+    def bin_2d_cont_resp_cont_pred(
+        self, df, response, pred1, pred2, bin_counts=None, weighted=None
+    ):
+
+        df["CatAge"], bin_array1 = pd.cut(x=df["Age"], bins=10, retbins=True)
+
+        df["CatFare"], bin_array2 = pd.cut(x=df["Fare"], bins=10, retbins=True)
+
+        df["Join"] = df["CatAge"].astype(str) + "," + df["CatFare"].astype(str)
+
+        # df_temp_heatmap = df[['Join','Age']].groupby('Join').count()
+        # df_temp_heatmap['AveAge'] = df[['Join','Age']].groupby('Join').mean()
+
+        df_temp_heatmap = df[["Join", "Fare"]].groupby("Join").count()
+        df_temp_heatmap["AveFare"] = df[["Join", "Fare"]].groupby("Join").mean()
+
+        df_temp_heatmap["Resp"] = df[["Join", "Survived"]].groupby("Join").mean()
+        df_temp_heatmap.reset_index(inplace=True)
+        print(df_temp_heatmap)
+
+        list1 = df["CatAge"].unique().sort_values()
+        list2 = df["CatFare"].unique().sort_values()
+
+        df_list = []
+        for outer_bin in list1:
+            temp_list = []
+            for inner_bin in list2:
+                bin_array = str(outer_bin) + "," + str(inner_bin)
+                val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
+                if val.size == 0:
+                    temp_list.append(0)
+                else:
+                    temp_list.append(val.iloc[0])
+            df_list.append(temp_list)
+
+        temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
+        print(temp_df)
+        pass
 
     def _get_bin_resp_pred_df(
         self, bins_cat, pop_mean, response, predictor, bin_center=None
