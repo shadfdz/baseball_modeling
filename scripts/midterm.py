@@ -159,46 +159,30 @@ def main():
 
     # WIP
 
-    df["CatAge"], bin_array1 = pd.cut(x=df["Age"], bins=10, retbins=True)
+    response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
+    df_bins = response_bins.bin_2d_cont_resp_cont_pred(response, "Fare", "Age")
+    print(df_bins)
 
-    df["CatFare"], bin_array2 = pd.cut(x=df["Fare"], bins=10, retbins=True)
-
-    df["Join"] = df["CatAge"].astype(str) + "," + df["CatFare"].astype(str)
-
-    # df_temp_heatmap = df[['Join','Age']].groupby('Join').count()
-    # df_temp_heatmap['AveAge'] = df[['Join','Age']].groupby('Join').mean()
-
-    df_temp_heatmap = df[["Join", "Fare"]].groupby("Join").count()
-    df_temp_heatmap["AveFare"] = df[["Join", "Fare"]].groupby("Join").mean()
-
-    df_temp_heatmap["Resp"] = df[["Join", "Survived"]].groupby("Join").mean()
-    df_temp_heatmap.reset_index(inplace=True)
-    print(df_temp_heatmap)
-
-    list1 = df["CatAge"].unique().sort_values()
-    list2 = df["CatFare"].unique().sort_values()
-
-    df_list = []
-    for outer_bin in list1:
-        temp_list = []
-        for inner_bin in list2:
-            bin_array = str(outer_bin) + "," + str(inner_bin)
-            val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
-            if val.size == 0:
-                temp_list.append(0)
-            else:
-                temp_list.append(val.iloc[0])
-        df_list.append(temp_list)
-
-    temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
-    print(temp_df)
-
-    sns.heatmap(temp_df, annot=True)
-    plt.show()
-
-    binned = brp.BinResponseByPredictor(df, feature_type_dict, 10)
-
-    binned.bin_2d_cont_resp_cont_pred(df, response, "Age", "Fare", 10)
+    # list1 = df["CatAge"].unique().sort_values()
+    # list2 = df["CatFare"].unique().sort_values()
+    #
+    # df_list = []
+    # for outer_bin in list1:
+    #     temp_list = []
+    #     for inner_bin in list2:
+    #         bin_array = str(outer_bin) + "," + str(inner_bin)
+    #         val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
+    #         if val.size == 0:
+    #             temp_list.append(0)
+    #         else:
+    #             temp_list.append(val.iloc[0])
+    #     df_list.append(temp_list)
+    #
+    # temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
+    # print(temp_df)
+    #
+    # sns.heatmap(temp_df, annot=True)
+    # plt.show()
 
 
 if __name__ == "__main__":
