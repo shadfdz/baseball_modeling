@@ -2,7 +2,7 @@ import pandas as pd
 
 
 class BinResponseByPredictor:
-    def __init__(self, dataframe, feature_type_dictionary, bin_count):
+    def __init__(self, dataframe, feature_type_dictionary, bin_count=None):
         self.df = dataframe
         self.feature_type_dict = feature_type_dictionary
         self.bin_count = bin_count
@@ -120,43 +120,41 @@ class BinResponseByPredictor:
         return bin_df
 
     def bin_2d_cont_resp_cont_pred(
-        self, df, response, pred1, pred2, bin_counts=None, weighted=None
+        self, response, pred1, pred2, bin_counts=None, weighted=None
     ):
+        self.df[pred1 + "Bin"] = pd.cut(x=self.df[pred1], bins=bin_counts)
 
-        df["CatAge"], bin_array1 = pd.cut(x=df["Age"], bins=10, retbins=True)
+        self.df[pred2 + "Bin"] = pd.cut(x=self.df[pred2], bins=bin_counts)
 
-        df["CatFare"], bin_array2 = pd.cut(x=df["Fare"], bins=10, retbins=True)
+        self.df["Bin"] = (
+            self.df[pred1 + "Bin"].astype(str)
+            + ","
+            + self.df[pred2 + "Bin"].astype(str)
+        )
 
-        df["Join"] = df["CatAge"].astype(str) + "," + df["CatFare"].astype(str)
+        df_mean_sq_diff = self.df[["Bin", response]].groupby("Bin").mean()
+        df_mean_sq_diff.reset_index(inplace=True)
+        df_mean_sq_diff = df_mean_sq_diff.rename(columns={response: "RespBinMean"})
+        df_mean_sq_diff["RespPopMean"] = self.df[response].mean()
 
-        # df_temp_heatmap = df[['Join','Age']].groupby('Join').count()
-        # df_temp_heatmap['AveAge'] = df[['Join','Age']].groupby('Join').mean()
+        df_bin_counts = (
+            self.df["Bin"].value_counts().rename_axis("Bin").reset_index(name="BinPop")
+        )
 
-        df_temp_heatmap = df[["Join", "Fare"]].groupby("Join").count()
-        df_temp_heatmap["AveFare"] = df[["Join", "Fare"]].groupby("Join").mean()
+        df_mean_sq_diff = df_mean_sq_diff.merge(df_bin_counts, on="Bin")
 
-        df_temp_heatmap["Resp"] = df[["Join", "Survived"]].groupby("Join").mean()
-        df_temp_heatmap.reset_index(inplace=True)
-        print(df_temp_heatmap)
+        df_mean_sq_diff["MeanSquaredDiff"] = (
+            (df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2
+        ) / df_mean_sq_diff["BinPop"]
+        df_mean_sq_diff["WeighMeanSquaredDiff"] = (
+            ((df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2)
+            * df_mean_sq_diff["BinPop"]
+            / df_bin_counts["BinPop"].sum()
+        )
 
-        list1 = df["CatAge"].unique().sort_values()
-        list2 = df["CatFare"].unique().sort_values()
+        self.df = self.df.drop(columns=[pred1 + "Bin", pred2 + "Bin", "Bin"], axis=1)
 
-        df_list = []
-        for outer_bin in list1:
-            temp_list = []
-            for inner_bin in list2:
-                bin_array = str(outer_bin) + "," + str(inner_bin)
-                val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
-                if val.size == 0:
-                    temp_list.append(0)
-                else:
-                    temp_list.append(val.iloc[0])
-            df_list.append(temp_list)
-
-        temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
-        print(temp_df)
-        pass
+        return df_mean_sq_diff
 
     def _get_bin_resp_pred_df(
         self, bins_cat, pop_mean, response, predictor, bin_center=None
@@ -187,11 +185,15 @@ class BinResponseByPredictor:
             temp_list.append(pop_mean)
             msd = (
                 (self.df[response][(self.df[predictor] == cat)].mean() - pop_mean) ** 2
-            ) / self.bin_count
+            ) / bin_pop
             temp_list.append(msd)
             pop_prop = pop_mean / len(self.df.index)
             temp_list.append(pop_prop)
-            temp_list.append(pop_prop * msd)
+            temp_list.append(
+                pop_prop
+                * (self.df[response][(self.df[predictor] == cat)].mean() - pop_mean)
+                ** 2
+            )
             # add to temp list
             data_frame_list.append(temp_list)
         # create data frame from temp list
