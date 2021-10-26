@@ -1,5 +1,11 @@
 import pandas as pd
 
+# pseudo code
+# if response has two categories
+# exit
+# if 2 categorical -- dummify
+# if boolean then proceed
+
 
 class BinResponseByPredictor:
     def __init__(self, dataframe, feature_type_dictionary, bin_count=None):
@@ -119,7 +125,77 @@ class BinResponseByPredictor:
 
         return bin_df
 
-    def bin_2d_cont_resp_cont_pred(
+    def bin_2d_cat_resp_cont_cont_pred(
+        self, response, pred1, pred2, bin_counts=None, weighted=None
+    ):
+        self.df[pred1 + "Bin"] = pd.cut(x=self.df[pred1], bins=bin_counts)
+
+        self.df[pred2 + "Bin"] = pd.cut(x=self.df[pred2], bins=bin_counts)
+
+        self.df["Bin"] = (
+            self.df[pred1 + "Bin"].astype(str)
+            + ","
+            + self.df[pred2 + "Bin"].astype(str)
+        )
+
+        df_mean_sq_diff = self.df[["Bin", response]].groupby("Bin").mean()
+        df_mean_sq_diff.reset_index(inplace=True)
+        df_mean_sq_diff = df_mean_sq_diff.rename(columns={response: "RespBinMean"})
+        df_mean_sq_diff["RespPopMean"] = self.df[response].mean()
+
+        df_bin_counts = (
+            self.df["Bin"].value_counts().rename_axis("Bin").reset_index(name="BinPop")
+        )
+
+        df_mean_sq_diff = df_mean_sq_diff.merge(df_bin_counts, on="Bin")
+
+        df_mean_sq_diff["MeanSquaredDiff"] = (
+            (df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2
+        ) / df_mean_sq_diff["BinPop"]
+        df_mean_sq_diff["WeighMeanSquaredDiff"] = (
+            ((df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2)
+            * df_mean_sq_diff["BinPop"]
+            / df_bin_counts["BinPop"].sum()
+        )
+
+        self.df = self.df.drop(columns=[pred1 + "Bin", pred2 + "Bin", "Bin"], axis=1)
+
+        return df_mean_sq_diff
+
+    def bin_2d_cat_resp_cont_cat_pred(
+        self, response, pred_cat, pred_cont, bin_counts=None, weighted=None
+    ):
+        self.df[pred_cont + "Bin"] = pd.cut(x=self.df[pred_cont], bins=bin_counts)
+
+        self.df["Bin"] = (
+            self.df[pred_cat].astype(str) + "," + self.df[pred_cont + "Bin"].astype(str)
+        )
+
+        df_mean_sq_diff = self.df[["Bin", response]].groupby("Bin").mean()
+        df_mean_sq_diff.reset_index(inplace=True)
+        df_mean_sq_diff = df_mean_sq_diff.rename(columns={response: "RespBinMean"})
+        df_mean_sq_diff["RespPopMean"] = self.df[response].mean()
+
+        df_bin_counts = (
+            self.df["Bin"].value_counts().rename_axis("Bin").reset_index(name="BinPop")
+        )
+
+        df_mean_sq_diff = df_mean_sq_diff.merge(df_bin_counts, on="Bin")
+
+        df_mean_sq_diff["MeanSquaredDiff"] = (
+            (df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2
+        ) / df_mean_sq_diff["BinPop"]
+        df_mean_sq_diff["WeighMeanSquaredDiff"] = (
+            ((df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2)
+            * df_mean_sq_diff["BinPop"]
+            / df_bin_counts["BinPop"].sum()
+        )
+
+        self.df = self.df.drop(columns=[pred_cont + "Bin", "Bin"], axis=1)
+
+        return df_mean_sq_diff
+
+    def bin_2d_cont_resp_cont_cont_pred(
         self, response, pred1, pred2, bin_counts=None, weighted=None
     ):
         self.df[pred1 + "Bin"] = pd.cut(x=self.df[pred1], bins=bin_counts)

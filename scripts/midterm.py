@@ -158,9 +158,9 @@ def main():
     plt.show()
 
     # WIP
-
+    print(df["Cabin"].value_counts())
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-    df_bins = response_bins.bin_2d_cont_resp_cont_pred(response, "Fare", "Age")
+    df_bins = response_bins.bin_2d_cont_resp_cont_cont_pred("Pclass", "Fare", "Age", 10)
     print(df_bins)
 
     # list1 = df["CatAge"].unique().sort_values()
