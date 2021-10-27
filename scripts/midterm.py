@@ -68,7 +68,7 @@ def get_df_as_matrix(df, list1, list2, category, attribute):
 
 def main():
     # get data
-    df = pd.read_csv("../datasets/titanic.csv")
+    df = pd.read_csv("../datasets/Titanic.csv")
     df = df.drop("Name", axis=1)
 
     # get list of response and predictors
@@ -128,7 +128,7 @@ def main():
     correlation_df = correlation_df.sort_values(by="Correlation", ascending=False)
     print(correlation_df)
 
-    # # put links to original variable plot done in hw4
+    # put links to original variable plot done in hw4
     resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
     resp_pred_plotter.plot_response_by_predictors(response, predictors)
 
@@ -137,7 +137,6 @@ def main():
 
     # generate correlation matrix for each cont cont predictor
     df_corr_cont = df[cont_predictors].corr()
-    print(type(df_corr_cont))
     print(df_corr_cont)
     sns.heatmap(df_corr_cont)
 
@@ -176,31 +175,29 @@ def main():
     plt.show()
 
     # WIP
-    print(df["Pclass"].value_counts())
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-    df_bins, list1, list2 = response_bins.bin_2d_cat_cat_pred(
-        "Age", "Pclass", "Survived"
+    df_bins, list1, list2 = response_bins.bin_2d_cat_cont_pred(
+        "Survived", "Sex", "Fare", 10
     )
-    print(df_bins)
 
-    temp_df = get_df_as_matrix(df, list1, list2, "Bin", "RespBinMean")
+    temp_df = get_df_as_matrix(df_bins, list1, list2, "Bin", "RespBinMean")
     print(temp_df)
-    # list1 = np.sort(list1)
-    # list2 = np.sort(list2)
-    # df_list = []
-    # for outer_bin in list1:
-    #     temp_list = []
-    #     for inner_bin in list2:
-    #         bin_array = str(outer_bin) + "," + str(inner_bin)
-    #         val = df_bins.loc[df_bins["Bin"] == bin_array, "RespBinMean"]
-    #         if val.size == 0:
-    #             temp_list.append(0)
-    #         else:
-    #             temp_list.append(val.iloc[0])
-    #     df_list.append(temp_list)
-    #
-    # temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
-    # print(temp_df)
+    list1 = np.sort(list1)
+    list2 = np.sort(list2)
+    df_list = []
+    for outer_bin in list1:
+        temp_list = []
+        for inner_bin in list2:
+            bin_array = str(outer_bin) + "," + str(inner_bin)
+            val = df_bins.loc[df_bins["Bin"] == bin_array, "RespBinMean"]
+            if val.size == 0:
+                temp_list.append(0)
+            else:
+                temp_list.append(val.iloc[0])
+        df_list.append(temp_list)
+
+    temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
+    print(temp_df)
 
     sns.heatmap(temp_df, annot=True)
     plt.show()

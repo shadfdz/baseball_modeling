@@ -19,7 +19,6 @@ class PlotPredictorResponse:
 
     def plot_response_by_predictors(self, response, predictors):
 
-        print(self.feature_type_dict.get(response))
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
