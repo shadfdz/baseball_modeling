@@ -3,6 +3,7 @@ import sys
 import bin_response_by_predictor as brp
 import cat_correlation as cc
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plot_pred_response as ppr
 import seaborn as sns
@@ -35,9 +36,7 @@ def get_feature_type_dict(dataframe):
     feature_type_dict = {}
     for col in dataframe.columns:
         if str(dataframe[col].dtype).startswith("int"):
-            if dataframe[col].unique().size >= 2 and dataframe[col].unique().size < int(
-                len(dataframe) * 0.05
-            ):
+            if 2 <= dataframe[col].unique().size < int(len(dataframe) * 0.05):
                 feature_type_dict[col] = "categorical"
             else:
                 feature_type_dict[col] = "continuous"
@@ -46,6 +45,25 @@ def get_feature_type_dict(dataframe):
         else:
             feature_type_dict[col] = "categorical"
     return feature_type_dict
+
+
+def get_df_as_matrix(df, list1, list2, category, attribute):
+    list1 = np.sort(list1)
+    list2 = np.sort(list2)
+    df_list = []
+    for outer_bin in list1:
+        temp_list = []
+        for inner_bin in list2:
+            bin_array = str(outer_bin) + "," + str(inner_bin)
+            val = df.loc[df[category] == bin_array, attribute]
+            if val.size == 0:
+                temp_list.append(0)
+            else:
+                temp_list.append(val.iloc[0])
+        df_list.append(temp_list)
+
+    matrix = pd.DataFrame(df_list, columns=list2, index=list1)
+    return matrix
 
 
 def main():
@@ -158,20 +176,23 @@ def main():
     plt.show()
 
     # WIP
-    print(df["Cabin"].value_counts())
+    print(df["Pclass"].value_counts())
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-    df_bins = response_bins.bin_2d_cont_resp_cont_cont_pred("Pclass", "Fare", "Age", 10)
+    df_bins, list1, list2 = response_bins.bin_2d_cat_cat_pred(
+        "Age", "Pclass", "Survived"
+    )
     print(df_bins)
 
-    # list1 = df["CatAge"].unique().sort_values()
-    # list2 = df["CatFare"].unique().sort_values()
-    #
+    temp_df = get_df_as_matrix(df, list1, list2, "Bin", "RespBinMean")
+    print(temp_df)
+    # list1 = np.sort(list1)
+    # list2 = np.sort(list2)
     # df_list = []
     # for outer_bin in list1:
     #     temp_list = []
     #     for inner_bin in list2:
     #         bin_array = str(outer_bin) + "," + str(inner_bin)
-    #         val = df_temp_heatmap.loc[df_temp_heatmap["Join"] == bin_array, "Resp"]
+    #         val = df_bins.loc[df_bins["Bin"] == bin_array, "RespBinMean"]
     #         if val.size == 0:
     #             temp_list.append(0)
     #         else:
@@ -180,9 +201,9 @@ def main():
     #
     # temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
     # print(temp_df)
-    #
-    # sns.heatmap(temp_df, annot=True)
-    # plt.show()
+
+    sns.heatmap(temp_df, annot=True)
+    plt.show()
 
 
 if __name__ == "__main__":
