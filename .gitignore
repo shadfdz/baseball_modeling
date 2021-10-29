@@ -153,4 +153,5 @@ static
 # Mac
 datasets/baseball.sql
 .DS_Store
+scripts/sandbox.py
 
