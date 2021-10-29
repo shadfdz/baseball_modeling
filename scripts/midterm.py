@@ -3,11 +3,19 @@ import sys
 import bin_response_by_predictor as brp
 import cat_correlation as cc
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import plot_pred_response as ppr
 import seaborn as sns
 from scipy import stats
+
+# drop nans!!
+# find bin center done
+# update matrix to include bins without values done
+# heatmap with bin center for continuous done
+# annotate
+# save to html
+# save to excel with html links
+# make flask?!
 
 pd.set_option("display.width", 200)
 pd.set_option("display.max_columns", 12)
@@ -47,9 +55,11 @@ def get_feature_type_dict(dataframe):
     return feature_type_dict
 
 
-def get_df_as_matrix(df, list1, list2, category, attribute):
-    list1 = np.sort(list1)
-    list2 = np.sort(list2)
+def get_df_as_matrix(
+    df, list_pred1, list_pred2, category, attribute, midpoint1=False, midpoint2=False
+):
+    list1 = list_pred1
+    list2 = list_pred2
     df_list = []
     for outer_bin in list1:
         temp_list = []
@@ -62,8 +72,27 @@ def get_df_as_matrix(df, list1, list2, category, attribute):
                 temp_list.append(val.iloc[0])
         df_list.append(temp_list)
 
-    matrix = pd.DataFrame(df_list, columns=list2, index=list1)
-    return matrix
+    if midpoint1:
+        list1 = []
+        for interval in list_pred1:
+            list1.append(interval.mid)
+
+    if midpoint2:
+        list2 = []
+        for interval in list_pred2:
+            list2.append(interval.mid)
+
+    return pd.DataFrame(df_list, columns=list2, index=list1)
+
+
+def get_bin_intervals(list_1):
+
+    temp_list = []
+    for val in range(len(list_1) - 1):
+        j = pd.Interval(round(list_1[val], 3), round(list_1[val + 1], 3))
+        temp_list.append(j)
+
+    return temp_list
 
 
 def main():
@@ -89,6 +118,7 @@ def main():
     # create correlation metrics for each predictor
     corr_temp_list = []
     corr_col_names = ["Predictor1", "Predictor2", "Correlation"]
+
     # # print correlation metrics for each continuous predictor
     for pred_outer in cont_predictors:
         for pred_inner in cont_predictors:
@@ -174,33 +204,48 @@ def main():
     sns.heatmap(df_corr_matrix, annot=True)
     plt.show()
 
-    # WIP
+    # # WIP
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-    df_bins, list1, list2 = response_bins.bin_2d_cat_cont_pred(
-        "Survived", "Sex", "Fare", 10
-    )
+    # print correlation metrics for each continuous predictor
+    for pred_outer in cont_predictors:
+        for pred_inner in cont_predictors:
+            if pred_outer != pred_inner:
+                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cont_cont_pred(
+                    response, pred_outer, pred_inner, 8
+                )
+                print(df_bins)
+                bin_interval1 = get_bin_intervals(bin_list1)
+                bin_interval2 = get_bin_intervals(bin_list2)
+                mat = get_df_as_matrix(
+                    df_bins, bin_interval1, bin_interval2, "Bin", "BinPop", True, True
+                )
 
-    temp_df = get_df_as_matrix(df_bins, list1, list2, "Bin", "RespBinMean")
-    print(temp_df)
-    list1 = np.sort(list1)
-    list2 = np.sort(list2)
-    df_list = []
-    for outer_bin in list1:
-        temp_list = []
-        for inner_bin in list2:
-            bin_array = str(outer_bin) + "," + str(inner_bin)
-            val = df_bins.loc[df_bins["Bin"] == bin_array, "RespBinMean"]
-            if val.size == 0:
-                temp_list.append(0)
-            else:
-                temp_list.append(val.iloc[0])
-        df_list.append(temp_list)
+    # print correlation metrics for each categorical predictor
+    for pred_outer in cat_predictors:
+        for pred_inner in cat_predictors:
+            if pred_outer != pred_inner:
+                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cat_pred(
+                    response, pred_outer, pred_inner, 8
+                )
+                print(df_bins)
+                mat = get_df_as_matrix(
+                    df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
+                )
+                print(mat)
 
-    temp_df = pd.DataFrame(df_list, columns=list2, index=list1)
-    print(temp_df)
-
-    sns.heatmap(temp_df, annot=True)
-    plt.show()
+    for pred_outer in cat_predictors:
+        for pred_inner in cont_predictors:
+            if pred_outer != pred_inner:
+                print(pred_outer, pred_inner)
+                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cont_pred(
+                    response, pred_outer, pred_inner, 8
+                )
+                print(df_bins)
+                bin_interval2 = get_bin_intervals(bin_list2)
+                mat = get_df_as_matrix(
+                    df_bins, bin_list1, bin_interval2, "Bin", "RespBinMean", False, True
+                )
+                print(mat)
 
 
 if __name__ == "__main__":
