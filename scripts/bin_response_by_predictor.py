@@ -1,5 +1,11 @@
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+
+
+def remove_nan(df, feature1, feature2):
+    df = df.drop
+    pass
 
 
 def is_response_boolean(df, resp):
@@ -31,6 +37,11 @@ def get_bin_attributes(df, response):
         * df_mean_sq_diff["BinPop"]
         / df_bin_counts["BinPop"].sum()
     )
+
+    df_mean_sq_diff = df_mean_sq_diff.sort_values(
+        by=["WeighMeanSquaredDiff"], ascending=False
+    )
+
     return df_mean_sq_diff
 
 
@@ -153,10 +164,16 @@ class BinResponseByPredictor:
         return bin_df
 
     def bin_2d_cont_cont_pred(self, resp, pred1, pred2, bin_counts=None):
+
         response = is_response_boolean(self.df, resp)
 
-        self.df[pred1 + "Bin"] = pd.cut(x=self.df[pred1], bins=bin_counts)
-        self.df[pred2 + "Bin"] = pd.cut(x=self.df[pred2], bins=bin_counts)
+        self.df[pred1 + "Bin"], bin1 = pd.cut(
+            x=self.df[pred1], bins=bin_counts, retbins=True
+        )
+        self.df[pred2 + "Bin"], bin2 = pd.cut(
+            x=self.df[pred2], bins=bin_counts, retbins=True
+        )
+
         self.df["Bin"] = (
             self.df[pred1 + "Bin"].astype(str)
             + ","
@@ -164,9 +181,6 @@ class BinResponseByPredictor:
         )
 
         df_mean_sq_diff = get_bin_attributes(self.df, response)
-
-        pred1_bin__list = self.df[pred1 + "Bin"].unique().sort_values()
-        pred2_bin_list = self.df[pred2 + "Bin"].unique().sort_values()
 
         if str(self.df[response].dtype) == "object":
             self.df = self.df.drop(
@@ -178,12 +192,14 @@ class BinResponseByPredictor:
                 columns=[pred1 + "Bin", pred2 + "Bin", "Bin"], axis=1
             )
 
-        return df_mean_sq_diff, pred1_bin__list, pred2_bin_list
+        return df_mean_sq_diff, bin1, bin2
 
     def bin_2d_cat_cont_pred(self, resp, pred_cat, pred_cont, bin_counts=None):
         response = is_response_boolean(self.df, resp)
 
-        self.df[pred_cont + "Bin"] = pd.cut(x=self.df[pred_cont], bins=bin_counts)
+        self.df[pred_cont + "Bin"], pred2_bin_list = pd.cut(
+            x=self.df[pred_cont], bins=bin_counts, retbins=True
+        )
 
         self.df["Bin"] = (
             self.df[pred_cat].astype(str) + "," + self.df[pred_cont + "Bin"].astype(str)
@@ -191,8 +207,7 @@ class BinResponseByPredictor:
 
         df_mean_sq_diff = get_bin_attributes(self.df, response)
 
-        pred1_bin_list = self.df[pred_cat].unique()
-        pred2_bin_list = self.df[pred_cont + "Bin"].unique().sort_values()
+        pred1_bin_list = np.sort(self.df[pred_cat].astype(str).unique())
 
         if str(self.df[response].dtype) == "object":
             self.df = self.df.drop(
@@ -210,8 +225,8 @@ class BinResponseByPredictor:
 
         df_mean_sq_diff = get_bin_attributes(self.df, response)
 
-        pred1_bin_list = self.df[pred1].unique()
-        pred2_bin_list = self.df[pred2].unique()
+        pred1_bin_list = np.sort(self.df[pred1].astype(str).unique())
+        pred2_bin_list = np.sort(self.df[pred2].astype(str).unique())
 
         return df_mean_sq_diff, pred1_bin_list, pred2_bin_list
 
