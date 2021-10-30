@@ -71,3 +71,5 @@ tenacity==8.0.1
     # via plotly
 threadpoolctl==2.2.0
     # via scikit-learn
+xlsxwriter==3.0.1
+    # via -r requirements.in

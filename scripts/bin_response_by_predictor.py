@@ -3,11 +3,6 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 
-def remove_nan(df, feature1, feature2):
-    df = df.drop
-    pass
-
-
 def is_response_boolean(df, resp):
     response = resp
     if str(df[response].dtype) == "object":
@@ -87,7 +82,7 @@ class BinResponseByPredictor:
         bin_center = []
         for indx, val in enumerate(bin_array):
             if indx != 0:
-                bin_center.append(round((val + bin_array[indx - 1]) / 2, 5))
+                bin_center.append(round((val + bin_array[indx - 1]) / 2, 3))
         predictor = "bin_cat"
         # Find bin categories
         bins_cat = self.df["bin_cat"].sort_values().unique()

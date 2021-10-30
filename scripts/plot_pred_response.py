@@ -22,14 +22,14 @@ class PlotPredictorResponse:
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    self.cont_resp_cont_pred(response, pred)
+                    return self.cont_resp_cont_pred(response, pred)
                 else:
-                    self.cont_resp_cat_pred(response, pred)
+                    return self.cont_resp_cat_pred(response, pred)
             else:
                 if self.feature_type_dict.get(pred) == "continuous":
-                    self.cat_resp_cont_pred(response, pred)
+                    return self.cat_resp_cont_pred(response, pred)
                 else:
-                    self.cat_resp_cat_pred(response, pred)
+                    return self.cat_resp_cat_pred(response, pred)
 
     def cat_resp_cont_pred(self, response, predictor):
 
@@ -46,9 +46,9 @@ class PlotPredictorResponse:
             "Response = " + str(categories[1]),
         ]
 
-        fig_2 = go.Figure()
+        fig = go.Figure()
         for curr_hist, curr_group in zip(hist_data, group_labels):
-            fig_2.add_trace(
+            fig.add_trace(
                 go.Violin(
                     x=np.repeat(curr_group, len(curr_group)),
                     y=curr_hist,
@@ -57,12 +57,17 @@ class PlotPredictorResponse:
                     meanline_visible=True,
                 )
             )
-        fig_2.update_layout(
+        fig.update_layout(
             title=response + " by " + predictor,
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        fig_2.show()
+        file = response + "by" + predictor + ".html"
+        fig.write_html(
+            file="../output/" + file,
+            include_plotlyjs="cdn",
+        )
+        return file
 
     def cont_resp_cat_pred(self, response, predictor):
 
@@ -81,32 +86,32 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title="Distribution",
         )
-        distribution_plot.show()
+        file = response + "by" + predictor + ".html"
         distribution_plot.write_html(
-            file="../plots/" + response + "by" + predictor + ".html",
+            file="../output/" + file,
             include_plotlyjs="cdn",
         )
+        return file
 
-    def cat_resp_cat_pred(self, response, predictors):
+    def cat_resp_cat_pred(self, response, predictor):
         dum_resp_df = pd.get_dummies(self.df[response])
-        dum_pred_df = pd.get_dummies(self.df[predictors])
+        dum_pred_df = pd.get_dummies(self.df[predictor])
 
         conf_matrix = confusion_matrix(dum_resp_df.iloc[:, 0], dum_pred_df.iloc[:, 0])
 
-        fig_no_relationship = go.Figure(
-            data=go.Heatmap(z=conf_matrix, zmin=0, zmax=conf_matrix.max())
-        )
+        fig = go.Figure(data=go.Heatmap(z=conf_matrix, zmin=0, zmax=conf_matrix.max()))
 
-        fig_no_relationship.update_layout(
-            title=response + " by " + predictors,
+        fig.update_layout(
+            title=response + " by " + predictor,
             xaxis_title=response,
-            yaxis_title=predictors,
+            yaxis_title=predictor,
         )
-        fig_no_relationship.show()
-        fig_no_relationship.write_html(
-            file="../plots/" + response + "by" + predictors + ".html",
+        file = response + "by" + predictor + ".html"
+        fig.write_html(
+            file="../output/" + file,
             include_plotlyjs="cdn",
         )
+        return file
 
     def cont_resp_cont_pred(self, response, predictor):
         x = self.df[predictor]
@@ -119,11 +124,12 @@ class PlotPredictorResponse:
             xaxis_title=predictor,
             yaxis_title=response,
         )
-        fig.show()
+        file = response + "by" + predictor + ".html"
         fig.write_html(
-            file="../plots/" + response + "by" + predictor + ".html",
+            file="../output/" + file,
             include_plotlyjs="cdn",
         )
+        return file
 
     def plot_diff_with_MOR(self, df_bins, response, pred):
 
@@ -155,6 +161,6 @@ class PlotPredictorResponse:
 
         fig.show()
         fig.write_html(
-            file="../plots/" + response + "by" + pred + ".html",
+            file=response + "by" + pred + ".html",
             include_plotlyjs="cdn",
         )
