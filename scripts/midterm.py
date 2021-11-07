@@ -1,4 +1,5 @@
 import sys
+from itertools import combinations
 
 import bin_response_by_predictor as brp
 import cat_correlation as cc
@@ -6,7 +7,6 @@ import numpy as np
 import pandas as pd
 import plot_pred_response as ppr
 import plotly.figure_factory as ff
-import xlsxwriter
 from scipy import stats
 
 pd.set_option("display.width", 200)
@@ -19,12 +19,12 @@ def get_response_predictors(dataframe):
     :param dataframe: data frame
     :return: list of response and predictors
     """
-    print("The following are features of the dataset: ")
-    print(*dataframe.columns)
-    response_feature = str(
-        input("\nPlease enter the column name of the response variable: ")
-    )
-    resp = response_feature
+    # print("The following are features of the dataset: ")
+    # print(*dataframe.columns)
+    # response_feature = str(
+    #     input("\nPlease enter the column name of the response variable: ")
+    # )
+    resp = "Survived"
     preds = dataframe.loc[:, ~dataframe.columns.isin([resp])].columns.to_list()
     print("Response: " + resp)
     print("Predictors:", *preds)
@@ -51,11 +51,102 @@ def get_feature_type_dict(dataframe):
     return feature_type_dict
 
 
+def get_cat_cont_predictor_list(feature_type_dict, response):
+    cat_predictors = []
+    cont_predictors = []
+    for key in feature_type_dict.keys():
+        if key != response:
+            if feature_type_dict.get(key) == "continuous":
+                cont_predictors.append(key)
+            else:
+                cat_predictors.append(key)
+    return cat_predictors, cont_predictors
+
+
+def get_correlation(df, pred1, pred2, corr_type):
+    corr = 0
+    if corr_type == "pearson":
+        corr = stats.pearsonr(df[pred1], df[pred2])[0]
+    elif corr_type == "categorical":
+        corr = cc.cat_correlation(df[pred1], df[pred2])
+    elif corr_type == "ratio":
+        corr = cc.cat_cont_correlation_ratio(df[pred1], df[pred2])
+    else:
+        print("Correlation category does not exist")
+    return corr
+
+
+def get_corr_metrics(
+    df, response, feature_type_dict, list1_pred, list2_pred, corr_function
+):
+    resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
+    corr_list = []
+    for pred_outer in list1_pred:
+        for pred_inner in list2_pred:
+            if pred_outer != pred_inner:
+                df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
+                df_corr = df_corr.reset_index()
+                temp_corr_row = [
+                    '=HYPERLINK("'
+                    + resp_pred_plotter.plot_response_by_predictors(
+                        response, [pred_outer]
+                    )
+                    + '","'
+                    + pred_outer
+                    + '")',
+                    '=HYPERLINK("'
+                    + resp_pred_plotter.plot_response_by_predictors(
+                        response, [pred_inner]
+                    )
+                    + '","'
+                    + pred_inner
+                    + '")',
+                    get_correlation(df_corr, pred_outer, pred_inner, corr_function),
+                ]
+                corr_list.append(temp_corr_row)
+    return corr_list
+
+
+def get_correlation_matrix(df, list1_pred, list2_pred, corr_function):
+
+    corr_matrix_df_list = []
+    for pred_outer in list1_pred:
+        corr_matrix_temp_list = []
+        for pred_inner in list2_pred:
+            df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
+            df_corr = df_corr.reset_index()
+            corr_matrix_temp_list.append(
+                get_correlation(df_corr, pred_outer, pred_inner, corr_function)
+            )
+        corr_matrix_df_list.append(corr_matrix_temp_list)
+    df_corr = pd.DataFrame(corr_matrix_df_list, columns=list2_pred, index=list1_pred)
+    z = np.around(df_corr.to_numpy(), 4)
+    x = df_corr.columns.to_list()
+    y = df_corr.index.to_list()
+    return df_corr, x, y, z
+
+
+def plot_correlation_matrix(x, y, z, title, file):
+
+    fig = ff.create_annotated_heatmap(
+        z=z, x=x, y=y, annotation_text=z, colorscale="thermal", showscale=True
+    )
+    fig.update_layout(
+        title=title,
+    )
+    file_name = file
+    fig.write_html(
+        file="../output/" + file_name,
+        include_plotlyjs="cdn",
+    )
+    fig.show()
+
+
 def get_df_as_matrix(
     df, list_pred1, list_pred2, category, attribute, midpoint1=False, midpoint2=False
 ):
     """
-    Pivots a df into a matrix. Migpoint true shows interval center
+    Pivots a df into a matrix. Midpoint true shows interval center
     :param df: Pandas df
     :param list_pred1: columns categories
     :param list_pred2: columns categories
@@ -106,6 +197,33 @@ def get_bin_intervals(list_1):
     return temp_list
 
 
+def get_brute_force_table(
+    df, feature_type_dict, response, pred1, pred2, midpoint1=False, midpoint2=False
+):
+    df_matrix = 0
+    response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
+    for pred_outer in pred1:
+        for pred_inner in pred2:
+            if pred_outer != pred_inner:
+                (
+                    df_bins,
+                    bin_list1,
+                    bin_list2,
+                ) = response_bins.bin_2d_response_by_predictors(
+                    response, pred_outer, pred_inner, 8
+                )
+                df_matrix = get_df_as_matrix(
+                    df_bins,
+                    bin_list1,
+                    bin_list2,
+                    "Bin",
+                    "RespBinMean",
+                    midpoint1,
+                    midpoint2,
+                )
+    return df_matrix
+
+
 def create_sheet(temp_list, col_names, excel_instance, file_name):
     """
     function adds sheet to instance of xlsxwriter and returns a df
@@ -124,389 +242,96 @@ def create_sheet(temp_list, col_names, excel_instance, file_name):
 def main():
     # get data
     df = pd.read_csv("../datasets/Titanic.csv")
-    df = df.drop("Name", axis=1)
+    df = df.drop(["Name", "PassengerId", "Ticket"], axis=1)
 
-    xlsxwriter.Workbook("AddingThisToBypassFlakeHook.xlsx")
-
-    # create instance of writer to output results on excel
-    writer = pd.ExcelWriter("../output/Midterm.xlsx", engine="xlsxwriter")
     # get list of response and predictors
     response, predictors = get_response_predictors(df)
 
     # split predictors to categorical and continuous and add to respective list
     feature_type_dict = get_feature_type_dict(df)
-    cat_predictors = []
-    cont_predictors = []
-    for key in feature_type_dict.keys():
-        if feature_type_dict.get(key) == "continuous":
-            cont_predictors.append(key)
-        else:
-            cat_predictors.append(key)
-    print(cat_predictors)
-    print(cont_predictors)
+    cat_predictors, cont_predictors = get_cat_cont_predictor_list(
+        feature_type_dict, response
+    )
 
     # PART 1
-    # create correlation metrics for each predictor
-    corr_temp_list = []
-    corr_col_names = ["Predictor1", "Predictor2", "Correlation"]
-
-    # plot each predictor along with response
-
-    resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
-
     # print correlation metrics for each continuous predictor
-    for pred_outer in cont_predictors:
-        for pred_inner in cont_predictors:
-            if pred_outer != pred_inner:
-                df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-                df_corr = df_corr.reset_index()
-                temp_corr_row = [
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_outer]
-                    )
-                    + '","'
-                    + pred_outer
-                    + '")',
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_inner]
-                    )
-                    + '","'
-                    + pred_inner
-                    + '")',
-                    stats.pearsonr(df_corr[pred_outer], df_corr[pred_inner])[0],
-                ]
-                corr_temp_list.append(temp_corr_row)
-    corr_df = create_sheet(
-        corr_temp_list, corr_col_names, writer, "ContPredCorrMetrics"
+    list1 = get_corr_metrics(
+        df, response, feature_type_dict, cont_predictors, cont_predictors, "pearson"
     )
-    print(corr_df)
+    list2 = get_corr_metrics(
+        df, response, feature_type_dict, cat_predictors, cont_predictors, "ratio"
+    )
+    list3 = get_corr_metrics(
+        df, response, feature_type_dict, cat_predictors, cont_predictors, "categorical"
+    )
 
-    # print correlation metrics for each categorical predictor
-    for pred_outer in cat_predictors:
-        for pred_inner in cat_predictors:
-            if pred_outer != pred_inner:
-                df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-                df_corr = df_corr.reset_index()
-                temp_corr_row = [
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_outer]
-                    )
-                    + '","'
-                    + pred_outer
-                    + '")',
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_inner]
-                    )
-                    + '","'
-                    + pred_inner
-                    + '")',
-                    cc.cat_correlation(df_corr[pred_outer], df_corr[pred_inner]),
-                ]
-                corr_temp_list.append(temp_corr_row)
-    corr_df = create_sheet(
-        corr_temp_list, corr_col_names, writer, "CatContPredCorrMetrics"
-    )
-    print(corr_df)
-
-    # print correlation metrics for each categorical cont predictor
-    for pred_outer in cat_predictors:
-        for pred_inner in cont_predictors:
-            if pred_outer != pred_inner:
-                df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-                df_corr = df_corr.reset_index()
-                temp_corr_row = [
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_outer]
-                    )
-                    + '","'
-                    + pred_outer
-                    + '")',
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_inner]
-                    )
-                    + '","'
-                    + pred_inner
-                    + '")',
-                    cc.cat_cont_correlation_ratio(
-                        df_corr[pred_outer], df_corr[pred_inner]
-                    ),
-                ]
-                corr_temp_list.append(temp_corr_row)
-    corr_df = create_sheet(
-        corr_temp_list, corr_col_names, writer, "CatContPredCorrMetrics"
-    )
-    print(corr_df)
+    print(list1)
+    print(list2)
+    print(list3)
 
     # PART 2
-    # generate correlation matrices for the above three
-    # print heat map of all three combinations
-
     # generate correlation matrix for each cont cont predictor
-    sheet_list = []
-    df_corr_cont = df[cont_predictors].corr()
-    z = df_corr_cont.to_numpy()
-    x = df_corr_cont.columns.to_list()
-    y = list(reversed(x))
-    fig = ff.create_annotated_heatmap(
-        z=z, x=x, y=y, annotation_text=z, colorscale="thermal", showscale=True
+    df_corr_cont, x, y, z = get_correlation_matrix(
+        df, cont_predictors, cont_predictors, "pearson"
     )
-    fig.update_layout(
-        title="Correlation Matrix of Continuous Predictors",
+    plot_correlation_matrix(
+        x, y, z, "Correlation Matrix Continuous Predictors", "cont_cont"
     )
-    file_name = "cont_correlation_matrix.html"
-    fig.write_html(
-        file="../output/" + file_name,
-        include_plotlyjs="cdn",
-    )
-    sheet_list.append(["ContinuousPredictors", file_name])
-    print("Correlation Matrix for Continuous Predictors")
-    print(df_corr_cont)
 
-    # generate correlation metrics for each categorical cont predictor
-    corr_matrix_df_list = []
-    for pred_outer in cat_predictors:
-        corr_matrix_temp_list = []
-        for pred_inner in cont_predictors:
-            df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-            df_corr = df_corr.reset_index()
-            corr_matrix_temp_list.append(
-                cc.cat_cont_correlation_ratio(df_corr[pred_outer], df_corr[pred_inner])
-            )
-        corr_matrix_df_list.append(corr_matrix_temp_list)
-    df_corr_matrix = pd.DataFrame(
-        corr_matrix_df_list, columns=cont_predictors, index=cat_predictors
+    df_corr_cat_cont, x, y, z = get_correlation_matrix(
+        df, cat_predictors, cont_predictors, "ratio"
     )
-    z = df_corr_matrix.to_numpy()
-    x = df_corr_matrix.columns.to_list()
-    y = df_corr_matrix.index.to_list()
-    fig = ff.create_annotated_heatmap(
-        z=z, x=x, y=y, annotation_text=z, colorscale="thermal", showscale=True
+    plot_correlation_matrix(
+        x, y, z, "Correlation Matrix Categorical and Continuous Predictors", "cat_cont"
     )
-    fig.update_layout(
-        title="Correlation Matrix of Continuous and Categorical Predictors",
-    )
-    file_name = "cat_cont_correlation_matrix.html"
-    fig.write_html(
-        file="../output/" + file_name,
-        include_plotlyjs="cdn",
-    )
-    sheet_list.append(["CategoricalContinuousPredictors", file_name])
-    print("Correlation Matrix for Categorical and Continuous Predictors")
-    print(df_corr_matrix)
 
-    # generate correlation metrics for each cat cat predictor
-    corr_matrix_df_list = []
-    for pred_outer in cat_predictors:
-        corr_matrix_temp_list = []
-        for pred_inner in cat_predictors:
-            df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
-            df_corr = df_corr.reset_index()
-            corr_matrix_temp_list.append(
-                cc.cat_correlation(df_corr[pred_outer], df_corr[pred_inner])
-            )
-        corr_matrix_df_list.append(corr_matrix_temp_list)
-    df_corr_matrix = pd.DataFrame(
-        corr_matrix_df_list, columns=cat_predictors, index=cat_predictors
+    # # fix this!
+    df_corr_cat, x, y, z = get_correlation_matrix(
+        df, cat_predictors, cont_predictors, "categorical"
     )
-    z = df_corr_matrix.to_numpy()
-    x = df_corr_matrix.columns.to_list()
-    y = df_corr_matrix.index.to_list()
-    fig = ff.create_annotated_heatmap(
-        z=z, x=x, y=y, annotation_text=z, colorscale="thermal", showscale=True
+    plot_correlation_matrix(
+        x, y, z, "Correlation Matrix Categorical Predictors", "cat_cat"
     )
-    fig.update_layout(
-        title="Correlation Matrix of Categorical Predictors",
-    )
-    file_name = "cat_correlation_matrix.html"
-    fig.write_html(
-        file="../output/" + file_name,
-        include_plotlyjs="cdn",
-    )
-    sheet_list.append(["CategoricalContinuousPredictors", file_name])
 
-    df_corr_matrices = pd.DataFrame(sheet_list, columns=["Title", "FileName"])
-    df_corr_matrices["Title"] = (
-        '=HYPERLINK("'
-        + df_corr_matrices["FileName"]
-        + '","'
-        + df_corr_matrices["Title"]
-        + '")'
-    )
-    df_corr_matrices.to_excel(writer, sheet_name="CorrelationMatrix")
-    print("Correlation Metrics for Categorical Predictors")
-    print(df_corr_matrix)
-
-    # Part 3
-    brute_force_table = []
+    # # Part 3
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
 
-    # print correlation metrics for each continuous predictor
-    for pred_outer in cont_predictors:
-        for pred_inner in cont_predictors:
-            if pred_outer != pred_inner:
-                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cont_cont_pred(
-                    response, pred_outer, pred_inner, 8
-                )
-                bin_interval1 = get_bin_intervals(bin_list1)
-                bin_interval2 = get_bin_intervals(bin_list2)
-                # print(df_bins)
-                df_matrix = get_df_as_matrix(
-                    df_bins,
-                    bin_interval1,
-                    bin_interval2,
-                    "Bin",
-                    "RespBinMean",
-                    True,
-                    True,
-                )
-                z = np.round(df_matrix.to_numpy(), 3)
-                x = [str(i) for i in bin_interval1]
-                y = list(reversed([str(i) for i in bin_interval2]))
-                fig = ff.create_annotated_heatmap(
-                    z=z,
-                    x=x,
-                    y=y,
-                    colorscale="thermal",
-                    annotation_text=z,
-                    showscale=True,
-                )
-                fig.update_layout(title=pred_outer + " and " + pred_inner + " binmean")
-                file_name = pred_outer + "and" + pred_inner + "binmean.html"
-                fig.write_html(
-                    file="../output/" + file_name,
-                    include_plotlyjs="cdn",
-                )
+    # brute force table for cont predictors
+    for comb in combinations(cont_predictors, 2):
+        print(comb)
+        df_bins, bin_list1, bin_list2 = response_bins.bin_2d_response_by_predictors(
+            response, comb[0], comb[1], 8
+        )
+        int_1 = get_bin_intervals(bin_list1)
+        int_2 = get_bin_intervals(bin_list2)
+        print(df_bins)
+        print(get_df_as_matrix(df_bins, int_1, int_2, "Bin", "RespBinMean", True, True))
 
-                temp_table = [
-                    pred_outer,
-                    pred_inner,
-                    df_bins["MeanSquaredDiff"].sum(),
-                    df_bins["WeighMeanSquaredDiff"].sum(),
-                    file_name,
-                ]
-                brute_force_table.append(temp_table)
-    col_names = ["Pred1", "Pred2", "MeanSquaredDiff", "WeighMeanSquaredDiff", "Plot"]
-    cont_pred_brute_df = pd.DataFrame(brute_force_table, columns=col_names)
-    cont_pred_brute_df = cont_pred_brute_df.sort_values(
-        by="WeighMeanSquaredDiff", ascending=False
-    )
-    cont_pred_brute_df["Plot"] = (
-        '=HYPERLINK("' + cont_pred_brute_df["Plot"] + '","Link")'
-    )
-    cont_pred_brute_df.to_excel(writer, sheet_name="ContPredMatrixPlot", index=False)
-    print("Continuous Predictors Weighted and Unweighted Mean of Response")
-    print(cont_pred_brute_df)
+    for pred in combinations(cat_predictors, 2):
+        print(pred)
+        df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cat_pred(
+            response, pred[0], pred[1], 8
+        )
+        print(df_bins)
+        print(
+            get_df_as_matrix(
+                df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
+            )
+        )
 
-    # print correlation metrics for each categorical predictor
-    brute_force_table.clear()
-    for pred_outer in cat_predictors:
-        for pred_inner in cat_predictors:
-            if pred_outer != pred_inner:
-                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cat_pred(
-                    response, pred_outer, pred_inner, 8
-                )
-                df_matrix = get_df_as_matrix(
-                    df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
-                )
-                z = np.round(df_matrix.to_numpy(), 3)
-                y = list(reversed(df_matrix.index.to_list()))
-                fig = ff.create_annotated_heatmap(
-                    z=z,
-                    x=df_matrix.columns.to_list(),
-                    y=y,
-                    colorscale="thermal",
-                    annotation_text=z,
-                    showscale=True,
-                )
-                fig.update_layout(title=pred_outer + " and " + pred_inner + " binmean")
-                file_name = pred_outer + "and" + pred_inner + "binmean.html"
-                fig.write_html(
-                    file="../output/" + file_name,
-                    include_plotlyjs="cdn",
-                )
-
-                temp_table = [
-                    pred_outer,
-                    pred_inner,
-                    df_bins["MeanSquaredDiff"].sum(),
-                    df_bins["WeighMeanSquaredDiff"].sum(),
-                    file_name,
-                ]
-                brute_force_table.append(temp_table)
-    col_names = ["Pred1", "Pred2", "MeanSquaredDiff", "WeighMeanSquaredDiff", "Plot"]
-    cont_pred_brute_df = pd.DataFrame(brute_force_table, columns=col_names)
-    cont_pred_brute_df = cont_pred_brute_df.sort_values(
-        by="WeighMeanSquaredDiff", ascending=False
-    )
-    cont_pred_brute_df["Plot"] = (
-        '=HYPERLINK("' + cont_pred_brute_df["Plot"] + '","Link")'
-    )
-    cont_pred_brute_df.to_excel(writer, sheet_name="CatPredMatrixPlot", index=False)
-    print("Categorical Predictors Weighted and Unweighted Mean of Response")
-    print(cont_pred_brute_df)
-
-    brute_force_table.clear()
     for pred_outer in cat_predictors:
         for pred_inner in cont_predictors:
-            if pred_outer != pred_inner:
-                print(pred_outer, pred_inner)
-                df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cont_pred(
-                    response, pred_outer, pred_inner, 8
+            print(pred_outer, pred_inner)
+            df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cont_pred(
+                response, pred_outer, pred_inner, 8
+            )
+            print(df_bins)
+            int_2 = get_bin_intervals(bin_list2)
+            print(
+                get_df_as_matrix(
+                    df_bins, bin_list1, int_2, "Bin", "RespBinMean", False, True
                 )
-                bin_interval2 = get_bin_intervals(bin_list2)
-                df_matrix = get_df_as_matrix(
-                    df_bins, bin_list1, bin_interval2, "Bin", "RespBinMean", False, True
-                )
-                print(df_matrix)
-
-                z = np.round(df_matrix.to_numpy(), 3)
-                x = [str(i) for i in bin_interval2]
-                y = list(reversed(df_matrix.index.to_list()))
-                fig = ff.create_annotated_heatmap(
-                    z=z,
-                    x=x,
-                    y=y,
-                    colorscale="thermal",
-                    annotation_text=z,
-                    showscale=True,
-                )
-                fig.update_layout(title=pred_outer + " and " + pred_inner + " binmean")
-                file_name = pred_outer + "and" + pred_inner + "binmean.html"
-                fig.write_html(
-                    file="../output/" + file_name,
-                    include_plotlyjs="cdn",
-                )
-
-                temp_table = [
-                    pred_outer,
-                    pred_inner,
-                    df_bins["MeanSquaredDiff"].sum(),
-                    df_bins["WeighMeanSquaredDiff"].sum(),
-                    file_name,
-                ]
-                brute_force_table.append(temp_table)
-                break
-    col_names = ["Pred1", "Pred2", "MeanSquaredDiff", "WeighMeanSquaredDiff", "Plot"]
-    cont_pred_brute_df = pd.DataFrame(brute_force_table, columns=col_names)
-    cont_pred_brute_df = cont_pred_brute_df.sort_values(
-        by="WeighMeanSquaredDiff", ascending=False
-    )
-    cont_pred_brute_df["Plot"] = (
-        '=HYPERLINK("' + cont_pred_brute_df["Plot"] + '","Link")'
-    )
-    cont_pred_brute_df.to_excel(writer, sheet_name="CatContPredMatrixPlot", index=False)
-    print(
-        "Categorical and Continuous Predictors Weighted and Unweighted Mean of Response"
-    )
-
-    print(cont_pred_brute_df)
-    writer.save()
+            )
 
 
 if __name__ == "__main__":
