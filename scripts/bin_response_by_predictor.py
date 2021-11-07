@@ -47,28 +47,31 @@ class BinResponseByPredictor:
         self.bin_count = bin_count
 
     def bin_response_by_predictors(self, response, predictors):
-        bins_df_dict = {}
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    bins_df_dict[pred] = self.bin_cont_resp_cont_pred(
-                        response, pred, self.bin_count
-                    )
+                    return self.bin_cont_resp_cont_pred(response, pred, self.bin_count)
                 else:
-                    bins_df_dict[pred] = self.bin_cont_resp_cat_pred(
-                        response, pred, self.bin_count
-                    )
+                    return self.bin_cont_resp_cat_pred(response, pred, self.bin_count)
             else:
                 if self.feature_type_dict.get(pred) == "boolean":
-                    bins_df_dict[pred] = self.bin_cat_resp_cat_pred(
-                        response, pred, self.bin_count
-                    )
+                    return self.bin_cat_resp_cat_pred(response, pred, self.bin_count)
                 else:
-                    bins_df_dict[pred] = self.bin_cat_resp_cont_pred(
-                        response, pred, self.bin_count
-                    )
+                    return self.bin_cat_resp_cont_pred(response, pred, self.bin_count)
 
-        return bins_df_dict
+    def bin_2d_response_by_predictors(self, resp, pred1, pred2, bin_counts):
+        if (
+            self.feature_type_dict.get(pred1) == "continuous"
+            and self.feature_type_dict.get(pred1) == "continuous"
+        ):
+            return self.bin_2d_cont_cont_pred(resp, pred1, pred2, bin_counts)
+        elif (
+            self.feature_type_dict.get(pred1) == "categorical"
+            and self.feature_type_dict.get(pred1) == "categorical"
+        ):
+            return self.bin_2d_cat_cat_pred(resp, pred1, pred2)
+        else:
+            return self.bin_2d_cat_cont_pred(resp, pred1, pred2, bin_counts)
 
     def bin_cont_resp_cont_pred(self, response, pred, bin_counts=None):
 
