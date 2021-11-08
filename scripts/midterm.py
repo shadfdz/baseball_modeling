@@ -242,7 +242,9 @@ def create_sheet(temp_list, col_names, excel_instance, file_name):
 def main():
     # get data
     df = pd.read_csv("../datasets/Titanic.csv")
-    df = df.drop(["Name", "PassengerId", "Ticket"], axis=1)
+    df = df.drop(["PassengerId", "Ticket"], axis=1)
+
+    df["Name"] = df["Name"].str.split(",").str.get(0)
 
     # get list of response and predictors
     response, predictors = get_response_predictors(df)
@@ -262,9 +264,9 @@ def main():
         df, response, feature_type_dict, cat_predictors, cont_predictors, "ratio"
     )
     list3 = get_corr_metrics(
-        df, response, feature_type_dict, cat_predictors, cont_predictors, "categorical"
+        df, response, feature_type_dict, cat_predictors, cat_predictors, "categorical"
     )
-
+    #
     print(list1)
     print(list2)
     print(list3)
@@ -285,9 +287,8 @@ def main():
         x, y, z, "Correlation Matrix Categorical and Continuous Predictors", "cat_cont"
     )
 
-    # # fix this!
     df_corr_cat, x, y, z = get_correlation_matrix(
-        df, cat_predictors, cont_predictors, "categorical"
+        df, cat_predictors, cat_predictors, "categorical"
     )
     plot_correlation_matrix(
         x, y, z, "Correlation Matrix Categorical Predictors", "cat_cat"
