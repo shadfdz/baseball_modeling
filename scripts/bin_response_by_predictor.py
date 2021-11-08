@@ -25,8 +25,8 @@ def get_bin_attributes(df, response):
     )
     df_mean_sq_diff = df_mean_sq_diff.merge(df_bin_counts, on="Bin")
     df_mean_sq_diff["MeanSquaredDiff"] = (
-        (df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2
-    ) / df_mean_sq_diff["BinPop"]
+        df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]
+    ) ** 2
     df_mean_sq_diff["WeighMeanSquaredDiff"] = (
         ((df_mean_sq_diff["RespBinMean"] - df_mean_sq_diff["RespPopMean"]) ** 2)
         * df_mean_sq_diff["BinPop"]
@@ -35,7 +35,7 @@ def get_bin_attributes(df, response):
 
     df_mean_sq_diff = df_mean_sq_diff.sort_values(
         by=["WeighMeanSquaredDiff"], ascending=False
-    )
+    ).reset_index(drop=True)
 
     return df_mean_sq_diff
 
@@ -217,6 +217,7 @@ class BinResponseByPredictor:
         return df_mean_sq_diff, pred1_bin_list, pred2_bin_list
 
     def bin_2d_cat_cat_pred(self, resp, pred1, pred2, bin_counts=None):
+
         response = is_response_boolean(self.df, resp)
 
         self.df["Bin"] = self.df[pred1].astype(str) + "," + self.df[pred2].astype(str)
