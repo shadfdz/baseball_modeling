@@ -1,5 +1,5 @@
 import sys
-from itertools import combinations
+from itertools import combinations, combinations_with_replacement
 
 import bin_response_by_predictor as brp
 import cat_correlation as cc
@@ -13,7 +13,7 @@ pd.set_option("display.width", 200)
 pd.set_option("display.max_columns", 12)
 
 
-def get_response_predictors(dataframe):
+def set_response_predictors(dataframe):
     """
     Prompts user to enter response name. Function returns list of reponse and features that are predictors
     :param dataframe: data frame
@@ -31,7 +31,7 @@ def get_response_predictors(dataframe):
     return resp, preds
 
 
-def get_feature_type_dict(dataframe):
+def set_feature_type_dict(dataframe):
     """
     Function determines if features of a df is categorical or continuous
     :param dataframe: Pandas dataframe
@@ -51,7 +51,7 @@ def get_feature_type_dict(dataframe):
     return feature_type_dict
 
 
-def get_cat_cont_predictor_list(feature_type_dict, response):
+def set_cat_cont_predictors(feature_type_dict, response):
     cat_predictors = []
     cont_predictors = []
     for key in feature_type_dict.keys():
@@ -63,51 +63,42 @@ def get_cat_cont_predictor_list(feature_type_dict, response):
     return cat_predictors, cont_predictors
 
 
-def get_correlation(df, pred1, pred2, corr_type):
-    corr = 0
-    if corr_type == "pearson":
+def get_correlation(df, pred1, pred2, feature_type_dict):
+
+    if (feature_type_dict.get(pred1) == "continuous") and (
+        feature_type_dict.get(pred2) == "continuous"
+    ):
         corr = stats.pearsonr(df[pred1], df[pred2])[0]
-    elif corr_type == "categorical":
+    elif (feature_type_dict.get(pred1) == "categorical") and (
+        feature_type_dict.get(pred2) == "categorical"
+    ):
         corr = cc.cat_correlation(df[pred1], df[pred2])
-    elif corr_type == "ratio":
-        corr = cc.cat_cont_correlation_ratio(df[pred1], df[pred2])
     else:
-        print("Correlation category does not exist")
+        corr = cc.cat_cont_correlation_ratio(df[pred1], df[pred2])
     return corr
 
 
-def get_corr_metrics(
-    df, response, feature_type_dict, list1_pred, list2_pred, corr_function
-):
-    resp_pred_plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
+def get_correlation_metrics(df, response, list1_pred, list2_pred, feature_type_dict):
     corr_list = []
     for pred_outer in list1_pred:
         for pred_inner in list2_pred:
             if pred_outer != pred_inner:
                 df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
                 df_corr = df_corr.reset_index()
+                file_link1 = response + "by" + pred_outer + ".html"
+                file_link2 = response + "by" + pred_inner + ".html"
                 temp_corr_row = [
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_outer]
-                    )
-                    + '","'
-                    + pred_outer
-                    + '")',
-                    '=HYPERLINK("'
-                    + resp_pred_plotter.plot_response_by_predictors(
-                        response, [pred_inner]
-                    )
-                    + '","'
-                    + pred_inner
-                    + '")',
-                    get_correlation(df_corr, pred_outer, pred_inner, corr_function),
+                    '<a href="{}">{}</a>'.format(file_link1, pred_outer),
+                    '<a href="{}">{}</a>'.format(file_link2, pred_inner),
+                    get_correlation(df_corr, pred_outer, pred_inner, feature_type_dict),
                 ]
                 corr_list.append(temp_corr_row)
-    return corr_list
+    col_names = ["Pred1", "Pred2", "Correlation"]
+    corr_list_df = pd.DataFrame(corr_list, columns=col_names)
+    return corr_list_df
 
 
-def get_correlation_matrix(df, list1_pred, list2_pred, corr_function):
+def get_correlation_matrix(df, list1_pred, list2_pred, feature_type_dict):
 
     corr_matrix_df_list = []
     for pred_outer in list1_pred:
@@ -116,30 +107,41 @@ def get_correlation_matrix(df, list1_pred, list2_pred, corr_function):
             df_corr = df[(df[pred_inner].notnull()) & df[pred_outer].notnull()]
             df_corr = df_corr.reset_index()
             corr_matrix_temp_list.append(
-                get_correlation(df_corr, pred_outer, pred_inner, corr_function)
+                get_correlation(df_corr, pred_outer, pred_inner, feature_type_dict)
             )
         corr_matrix_df_list.append(corr_matrix_temp_list)
-    df_corr = pd.DataFrame(corr_matrix_df_list, columns=list2_pred, index=list1_pred)
+    return pd.DataFrame(corr_matrix_df_list, columns=list2_pred, index=list1_pred)
+
+
+def plot_correlation_matrix(df_corr, title, file):
     z = np.around(df_corr.to_numpy(), 4)
     x = df_corr.columns.to_list()
     y = df_corr.index.to_list()
-    return df_corr, x, y, z
-
-
-def plot_correlation_matrix(x, y, z, title, file):
+    if df_corr.columns.dtype != "object":
+        x = ["'" + (str(i) + "'") for i in np.around(x, 3)]
+    if df_corr.index.dtype != "object":
+        y = ["'" + (str(i) + "'") for i in np.around(y, 3)]
 
     fig = ff.create_annotated_heatmap(
-        z=z, x=x, y=y, annotation_text=z, colorscale="thermal", showscale=True
+        z=z,
+        x=x,
+        y=y,
+        annotation_text=z,
+        colorscale="thermal",
+        showscale=True,
+        hoverongaps=True,
     )
     fig.update_layout(
         title=title,
     )
-    file_name = file
+    file_name = "../output/" + file + ".html"
     fig.write_html(
-        file="../output/" + file_name,
+        file=file_name,
         include_plotlyjs="cdn",
     )
+    file_link = '<a href="{}">{}</a>'.format(file_name, title)
     fig.show()
+    return file_link
 
 
 def get_df_as_matrix(
@@ -224,21 +226,6 @@ def get_brute_force_table(
     return df_matrix
 
 
-def create_sheet(temp_list, col_names, excel_instance, file_name):
-    """
-    function adds sheet to instance of xlsxwriter and returns a df
-    :param temp_list: list of lists to create into pd df
-    :param col_names: list of col names
-    :param excel_instance: instance of xlsxwriter
-    :param file_name: file name
-    :return:
-    """
-    correlation_df = pd.DataFrame(temp_list, columns=col_names)
-    correlation_df = correlation_df.sort_values(by="Correlation", ascending=False)
-    correlation_df.to_excel(excel_instance, sheet_name=file_name, index=False)
-    return correlation_df
-
-
 def main():
     # Retrieve data
     df = pd.read_csv("../datasets/Titanic.csv")
@@ -246,78 +233,105 @@ def main():
     df["Name"] = df["Name"].str.split(",").str.get(0)
 
     # Get list of response and predictors
-    response, predictors = get_response_predictors(df)
+    response, predictors = set_response_predictors(df)
 
     # Split predictors to categorical and continuous and add to respective list
-    feature_type_dict = get_feature_type_dict(df)
-    cat_predictors, cont_predictors = get_cat_cont_predictor_list(
+    feature_type_dict = set_feature_type_dict(df)
+    cat_predictors, cont_predictors = set_cat_cont_predictors(
         feature_type_dict, response
     )
 
     # PART 1
-    # print correlation metrics for each continuous predictor
-    list1 = get_corr_metrics(
-        df, response, feature_type_dict, cont_predictors, cont_predictors, "pearson"
-    )
-    list2 = get_corr_metrics(
-        df, response, feature_type_dict, cat_predictors, cont_predictors, "ratio"
-    )
-    list3 = get_corr_metrics(
-        df, response, feature_type_dict, cat_predictors, cat_predictors, "categorical"
-    )
-    #
-    print(list1)
-    print(list2)
-    print(list3)
+    # plot each predictor along with response
+    plot_pred = ppr.PlotPredictorResponse(df, feature_type_dict)
+    plot_pred.plot_response_by_predictors(response, predictors)
 
-    # PART 2
-    # generate correlation matrix for each cont cont predictor
-    df_corr_cont, x, y, z = get_correlation_matrix(
-        df, cont_predictors, cont_predictors, "pearson"
+    # get correlation metrics for each continuous, categorical, and cont/cat predictor combinations
+    cont_correlation_df = get_correlation_metrics(
+        df, response, cont_predictors, cont_predictors, feature_type_dict
     )
-    plot_correlation_matrix(
-        x, y, z, "Correlation Matrix Continuous Predictors", "cont_cont"
+    cat_correlation_df = get_correlation_metrics(
+        df, response, cat_predictors, cont_predictors, feature_type_dict
+    )
+    cat_cont_pred_correlation_df = get_correlation_metrics(
+        df, response, cat_predictors, cat_predictors, feature_type_dict
     )
 
-    df_corr_cat_cont, x, y, z = get_correlation_matrix(
-        df, cat_predictors, cont_predictors, "ratio"
-    )
-    plot_correlation_matrix(
-        x, y, z, "Correlation Matrix Categorical and Continuous Predictors", "cat_cont"
-    )
+    # merge to one table and export as html
+    corr_df = pd.concat(
+        [cont_correlation_df, cat_correlation_df, cat_cont_pred_correlation_df]
+    ).sort_values(by="Correlation", ascending=False)
 
-    df_corr_cat, x, y, z = get_correlation_matrix(
-        df, cat_predictors, cat_predictors, "categorical"
-    )
-    plot_correlation_matrix(
-        x, y, z, "Correlation Matrix Categorical Predictors", "cat_cat"
-    )
+    # creat html file
+    corr_df = corr_df.to_html(index=False, escape=False)
+    file = open("../output/corr_table.html", "w")
+    file.write(corr_df)
+    file.close()
 
-    # # Part 3
+    # # PART 2
+    # # generate correlation matrix for each cont cont predictor
+    predictor_type_list = [cat_predictors, cont_predictors]
+    corr_plot_title_list = [
+        "Categorical",
+        "Categorical/Continuous",
+        "Continuous",
+    ]
+    corr_plot_file_name_list = [
+        "cat_cat_pred",
+        "cat_cont_pred",
+        "cont_cont_pred",
+    ]
+    i = 0
+    corr_df_list = []
+    for comb in combinations_with_replacement(predictor_type_list, 2):
+        corr_df_list.append(
+            [
+                plot_correlation_matrix(
+                    get_correlation_matrix(df, comb[0], comb[1], feature_type_dict),
+                    corr_plot_title_list[i],
+                    corr_plot_file_name_list[i],
+                )
+            ]
+        )
+        i += 1
+
+    corr_matrix_pred_df = pd.DataFrame(
+        corr_df_list, columns=["Correlation Plot by Predictor Type"]
+    )
+    corr_matrix_pred_df = corr_matrix_pred_df.to_html(index=False, escape=False)
+    file = open("../output/corr_matrix_tables.html", "w")
+    file.write(corr_matrix_pred_df)
+    file.close()
+
+    # Part 3
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-
+    #
     # brute force table for cont predictors
     for comb in combinations(cont_predictors, 2):
-        print(comb)
         df_bins, bin_list1, bin_list2 = response_bins.bin_2d_response_by_predictors(
             response, comb[0], comb[1], 8
         )
         int_1 = get_bin_intervals(bin_list1)
         int_2 = get_bin_intervals(bin_list2)
-        print(df_bins)
-        print(get_df_as_matrix(df_bins, int_1, int_2, "Bin", "RespBinMean", True, True))
+        title = comb[0] + " and " + comb[1] + " Correlation Matrix"
+        file_name = comb[0] + comb[1] + "corrplot"
+        plot_correlation_matrix(
+            get_df_as_matrix(df_bins, int_1, int_2, "Bin", "RespBinMean", True, True),
+            title,
+            file_name,
+        )
 
     for pred in combinations(cat_predictors, 2):
-        print(pred)
+        print(pred[0], pred[1])
         df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cat_pred(
             response, pred[0], pred[1], 8
         )
-        print(df_bins)
-        print(
-            get_df_as_matrix(
-                df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
-            )
+        test = get_df_as_matrix(
+            df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
         )
+        title = pred[0] + pred[1]
+        file = pred[0] + pred[1]
+        plot_correlation_matrix(test, title, file)
 
     for pred_outer in cat_predictors:
         for pred_inner in cont_predictors:
