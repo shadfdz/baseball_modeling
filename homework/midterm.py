@@ -240,16 +240,15 @@ def create_sheet(temp_list, col_names, excel_instance, file_name):
 
 
 def main():
-    # get data
+    # Retrieve data
     df = pd.read_csv("../datasets/Titanic.csv")
     df = df.drop(["PassengerId", "Ticket"], axis=1)
-
     df["Name"] = df["Name"].str.split(",").str.get(0)
 
-    # get list of response and predictors
+    # Get list of response and predictors
     response, predictors = get_response_predictors(df)
 
-    # split predictors to categorical and continuous and add to respective list
+    # Split predictors to categorical and continuous and add to respective list
     feature_type_dict = get_feature_type_dict(df)
     cat_predictors, cont_predictors = get_cat_cont_predictor_list(
         feature_type_dict, response
