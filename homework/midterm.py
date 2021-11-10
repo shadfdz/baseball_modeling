@@ -15,15 +15,10 @@ pd.set_option("display.max_columns", 12)
 
 def set_response_predictors(dataframe):
     """
-    Prompts user to enter response name. Function returns list of reponse and features that are predictors
+    Function returns list of reponse and features that are predictors
     :param dataframe: data frame
     :return: list of response and predictors
     """
-    # print("The following are features of the dataset: ")
-    # print(*dataframe.columns)
-    # response_feature = str(
-    #     input("\nPlease enter the column name of the response variable: ")
-    # )
     resp = "Survived"
     preds = dataframe.loc[:, ~dataframe.columns.isin([resp])].columns.to_list()
     print("Response: " + resp)
@@ -61,6 +56,14 @@ def set_cat_cont_predictors(feature_type_dict, response):
             else:
                 cat_predictors.append(key)
     return cat_predictors, cont_predictors
+
+
+def create_html_file(df, file_name):
+    # creat html file
+    df_html = df.to_html(index=False, escape=False)
+    file = open("../output/" + file_name + ".html", "w")
+    file.write(df_html)
+    file.close()
 
 
 def get_correlation(df, pred1, pred2, feature_type_dict):
@@ -118,21 +121,34 @@ def plot_correlation_matrix(df_corr, title, file):
     x = df_corr.columns.to_list()
     y = df_corr.index.to_list()
     if df_corr.columns.dtype != "object":
-        x = ["'" + (str(i) + "'") for i in np.around(x, 3)]
+        x = [i for i in np.around(x, 3)]
     if df_corr.index.dtype != "object":
-        y = ["'" + (str(i) + "'") for i in np.around(y, 3)]
+        y = [i for i in np.around(y, 3)]
 
     fig = ff.create_annotated_heatmap(
         z=z,
-        x=x,
-        y=y,
-        annotation_text=z,
         colorscale="thermal",
         showscale=True,
         hoverongaps=True,
     )
     fig.update_layout(
+        overwrite=True,
         title=title,
+        xaxis=dict(
+            ticks="",
+            dtick=1,
+            side="top",
+            gridcolor="rgb(0, 0, 0)",
+            tickvals=list(range(len(x))),
+            ticktext=x,
+        ),
+        yaxis=dict(
+            ticks="",
+            dtick=1,
+            ticksuffix="   ",
+            tickvals=list(range(len(y))),
+            ticktext=y,
+        ),
     )
     file_name = "../output/" + file + ".html"
     fig.write_html(
@@ -140,7 +156,6 @@ def plot_correlation_matrix(df_corr, title, file):
         include_plotlyjs="cdn",
     )
     file_link = '<a href="{}">{}</a>'.format(file_name, title)
-    fig.show()
     return file_link
 
 
@@ -227,10 +242,11 @@ def get_brute_force_table(
 
 
 def main():
-    # Retrieve data
+    # Retrieve data and pre process
     df = pd.read_csv("../datasets/Titanic.csv")
     df = df.drop(["PassengerId", "Ticket"], axis=1)
     df["Name"] = df["Name"].str.split(",").str.get(0)
+    df["Cabin"] = df["Cabin"].astype(str).str[0]
 
     # Get list of response and predictors
     response, predictors = set_response_predictors(df)
@@ -256,21 +272,18 @@ def main():
     cat_cont_pred_correlation_df = get_correlation_metrics(
         df, response, cat_predictors, cat_predictors, feature_type_dict
     )
-
     # merge to one table and export as html
     corr_df = pd.concat(
         [cont_correlation_df, cat_correlation_df, cat_cont_pred_correlation_df]
     ).sort_values(by="Correlation", ascending=False)
 
     # creat html file
-    corr_df = corr_df.to_html(index=False, escape=False)
-    file = open("../output/corr_table.html", "w")
-    file.write(corr_df)
-    file.close()
+    create_html_file(corr_df, "corr_table")
 
-    # # PART 2
-    # # generate correlation matrix for each cont cont predictor
+    # PART 2
+    # generate correlation matrix for each cont cont predictor
     predictor_type_list = [cat_predictors, cont_predictors]
+    # title and file name lists for correlation matrix df that will be converted to html
     corr_plot_title_list = [
         "Categorical",
         "Categorical/Continuous",
@@ -283,6 +296,7 @@ def main():
     ]
     i = 0
     corr_df_list = []
+    # iterate through predictors type list and plot correlation matrix
     for comb in combinations_with_replacement(predictor_type_list, 2):
         corr_df_list.append(
             [
@@ -295,57 +309,66 @@ def main():
         )
         i += 1
 
+    # create a df and save into file as table with html links
     corr_matrix_pred_df = pd.DataFrame(
         corr_df_list, columns=["Correlation Plot by Predictor Type"]
     )
-    corr_matrix_pred_df = corr_matrix_pred_df.to_html(index=False, escape=False)
-    file = open("../output/corr_matrix_tables.html", "w")
-    file.write(corr_matrix_pred_df)
-    file.close()
+    create_html_file(corr_matrix_pred_df, "corr_matrix_tables")
 
     # Part 3
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
-    #
+
     # brute force table for cont predictors
-    for comb in combinations(cont_predictors, 2):
+    brute_force_table_df = []
+    title = "Link"
+    for pred in combinations(cont_predictors, 2):
         df_bins, bin_list1, bin_list2 = response_bins.bin_2d_response_by_predictors(
-            response, comb[0], comb[1], 8
+            response, pred[0], pred[1], 8
         )
         int_1 = get_bin_intervals(bin_list1)
         int_2 = get_bin_intervals(bin_list2)
-        title = comb[0] + " and " + comb[1] + " Correlation Matrix"
-        file_name = comb[0] + comb[1] + "corrplot"
-        plot_correlation_matrix(
+        file_name = pred[0] + pred[1] + "response"
+        file_link = plot_correlation_matrix(
             get_df_as_matrix(df_bins, int_1, int_2, "Bin", "RespBinMean", True, True),
             title,
             file_name,
         )
+        brute_force_table_df.append([pred[0], pred[1], file_link])
 
     for pred in combinations(cat_predictors, 2):
-        print(pred[0], pred[1])
         df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cat_pred(
             response, pred[0], pred[1], 8
         )
-        test = get_df_as_matrix(
-            df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
+        file_name = pred[0] + pred[1] + "response"
+        file_link = plot_correlation_matrix(
+            get_df_as_matrix(
+                df_bins, bin_list1, bin_list2, "Bin", "RespBinMean", False, False
+            ),
+            title,
+            file_name,
         )
-        title = pred[0] + pred[1]
-        file = pred[0] + pred[1]
-        plot_correlation_matrix(test, title, file)
+        brute_force_table_df.append([pred[0], pred[1], file_link])
 
     for pred_outer in cat_predictors:
         for pred_inner in cont_predictors:
-            print(pred_outer, pred_inner)
             df_bins, bin_list1, bin_list2 = response_bins.bin_2d_cat_cont_pred(
                 response, pred_outer, pred_inner, 8
             )
-            print(df_bins)
             int_2 = get_bin_intervals(bin_list2)
-            print(
+            file_name = pred_outer + pred_inner + "response"
+            file_link = plot_correlation_matrix(
                 get_df_as_matrix(
                     df_bins, bin_list1, int_2, "Bin", "RespBinMean", False, True
-                )
+                ),
+                title,
+                file_name,
             )
+            brute_force_table_df.append([pred_outer, pred_inner, file_link])
+
+    brute_force_html_df = pd.DataFrame(
+        brute_force_table_df, columns=["Pred1", "Pred2", "Combined Response Plot"]
+    )
+    create_html_file(brute_force_html_df, "brute_force_tables")
 
 
 if __name__ == "__main__":

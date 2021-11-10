@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
+import plotly.figure_factory as ff
 from plotly import express as px
-from plotly import figure_factory as ff
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.metrics import confusion_matrix
@@ -18,18 +18,17 @@ class PlotPredictorResponse:
         self.feature_type_dict = feature_type_dictionary
 
     def plot_response_by_predictors(self, response, predictors):
-
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    return self.cont_resp_cont_pred(response, pred)
+                    self.cont_resp_cont_pred(response, pred)
                 else:
-                    return self.cont_resp_cat_pred(response, pred)
+                    self.cont_resp_cat_pred(response, pred)
             else:
                 if self.feature_type_dict.get(pred) == "continuous":
-                    return self.cat_resp_cont_pred(response, pred)
+                    self.cat_resp_cont_pred(response, pred)
                 else:
-                    return self.cat_resp_cat_pred(response, pred)
+                    self.cat_resp_cat_pred(response, pred)
 
     def cat_resp_cont_pred(self, response, predictor):
 
@@ -136,9 +135,10 @@ class PlotPredictorResponse:
         bin_cat_list = df_bins["Bin"].tolist()
         cat = []
         for num in bin_cat_list:
-            cat.append(str(num))
+            cat.append(str(round(num.mid, 3)))
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
+
         fig.add_trace(
             go.Bar(x=cat, y=df_bins["Counts"], name="Population"),
             secondary_y=False,
@@ -149,7 +149,21 @@ class PlotPredictorResponse:
                 y=df_bins["Means"] - df_bins["PopMean"],
                 name="BinMeanResponse-PopMeanResponse",
             ),
-            secondary_y="True",
+            secondary_y=True,
+        )
+
+        ave = df_bins["PopMean"].mean()
+
+        # fig.add_hline(y=2, line_dash='dash', line_color='Red', yref='paper')
+        fig.add_shape(
+            type="line",
+            yref="y2",
+            x0=-0.5,
+            y0=ave,
+            x1=len(bin_cat_list) - 0.5,
+            y1=ave,
+            line=dict(color="cyan"),
+            name="Average",
         )
 
         fig.update_layout(
@@ -161,6 +175,6 @@ class PlotPredictorResponse:
 
         fig.show()
         fig.write_html(
-            file=response + "by" + pred + ".html",
+            file="../output/" + response + "by" + pred + ".html",
             include_plotlyjs="cdn",
         )
