@@ -5,3 +5,5 @@ plotly
 pyspark
 pyspark-stubs
 pymysql
+statsmodels
+xlsxwriter
