@@ -7,7 +7,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
 
-# check for skewnes?!
 def set_response_predictors(dataframe):
     """
     Function returns resp name and list of predictors from df
