@@ -3,6 +3,7 @@ use baseball;
 set @@max_heap_table_size=2342177280;
 set SESSION sql_mode = 'ERROR_FOR_DIVISION_BY_ZERO ';
 
+-- Create a rolling look up table for starting pitch
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_starting_pitch;
 CREATE TEMPORARY TABLE t_rolling_lookup_starting_pitch ENGINE=MEMORY AS
 Select g.game_id,
@@ -27,11 +28,12 @@ CREATE INDEX rolling_lookup_game_id_idx ON t_rolling_lookup_starting_pitch (game
 CREATE INDEX rolling_lookup_local_date_idx ON t_rolling_lookup_starting_pitch (local_date);
 CREATE INDEX rolling_lookup_batter_idx ON t_rolling_lookup_starting_pitch (pitcher);
 
+-- Duplicate the rolling lookup for the table join
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_starting_pitch2;
 CREATE TEMPORARY TABLE t_rolling_lookup_starting_pitch2
 SELECT * FROM t_rolling_lookup_starting_pitch;
 
-
+-- Create a temp table of rolling stats of starting pitch
 DROP TEMPORARY TABLE IF EXISTS rolling_starting_pitch;
 CREATE TEMPORARY TABLE rolling_starting_pitch ENGINE=MEMORY AS
 Select rlsp.game_id,
@@ -43,17 +45,21 @@ Select rlsp.game_id,
 from t_rolling_lookup_starting_pitch rlsp
 JOIN t_rolling_lookup_starting_pitch2 rlsp2 on rlsp.pitcher = rlsp2.pitcher
 AND rlsp2.local_date between date_sub(rlsp.local_date, interval 100 day ) and rlsp.local_date
-GROUP BY rlsp.game_id, rlsp.local_date, rlsp.pitcher, rlsp.Walk, rlsp.Hit, rlsp.endingInning, rlsp.startingInning,
-       rlsp.pitchesThrown, rlsp.Home_Run, rlsp.Hit_By_Pitch, rlsp.Strikeout
+GROUP BY rlsp.game_id, rlsp.local_date, rlsp.pitcher
 order by local_date, rlsp.pitcher;
+CREATE UNIQUE INDEX rolling_starting_pitch_date_game_pitch_idx ON rolling_starting_pitch (game_id, pitcher, local_date);
+CREATE UNIQUE INDEX rolling_starting_pitch_game_pitch_idx ON rolling_starting_pitch (game_id, pitcher);
+CREATE INDEX rolling_starting_pitch_game_idx ON rolling_starting_pitch (game_id);
 
 DROP TEMPORARY TABLE IF EXISTS rolling_starting_pitch2;
 CREATE TEMPORARY TABLE rolling_starting_pitch2 AS
 SELECT * FROM rolling_starting_pitch;
+CREATE UNIQUE INDEX rolling_starting_pitch_date_game_pitch_idx ON rolling_starting_pitch2 (game_id, pitcher, local_date);
+CREATE UNIQUE INDEX rolling_starting_pitch_game_pitch_idx ON rolling_starting_pitch2 (game_id, pitcher);
+CREATE INDEX rolling_starting_pitch_game_idx ON rolling_starting_pitch2 (game_id);
 
 
-
-
+-- Create a rolling lookup of team pitching stats
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_team_pitching;
 CREATE TEMPORARY TABLE t_rolling_lookup_team_pitching ENGINE=MEMORY AS
 SELECT
@@ -79,10 +85,12 @@ CREATE INDEX rolling_lookup_team_id_idx ON t_rolling_lookup_team_pitching (game_
 CREATE INDEX rolling_lookup_team_date_idx ON t_rolling_lookup_team_pitching (local_date);
 CREATE INDEX rolling_lookup_team_idx ON t_rolling_lookup_team_pitching (team_id);
 
+-- Duplicate team rolling lookup for table join
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_team_pitching2;
 CREATE TEMPORARY TABLE t_rolling_lookup_team_pitching2
 Select * from t_rolling_lookup_team_pitching;
 
+-- Create table of rolling team pitch stats
 DROP TEMPORARY TABLE IF EXISTS rolling_team_pitch_stats;
 CREATE TEMPORARY TABLE rolling_team_pitch_stats AS
 SELECT
@@ -97,25 +105,33 @@ SUM(rlp1.Strikeout) / SUM(rlp1.Walk + rlp1.hit) AS 'StrikeWalk'
 FROM t_rolling_lookup_team_pitching rlp1
 JOIN t_rolling_lookup_team_pitching2 rlp2 on rlp1.team_id = rlp2.team_id
 AND rlp2.local_date between date_sub(rlp1.local_date, interval 100 day ) and rlp1.local_date
-GROUP BY rlp1.hit, rlp1.Hit_By_Pitch, rlp1.walk, rlp1.atbat, rlp1.strikeout, rlp1.force_out,
-         rlp1.ground_out,rlp1.Fly_Out,rlp1.Field_Error, rlp1.team_id, rlp1.game_id, rlp1.local_date
+GROUP BY rlp1.team_id, rlp1.game_id, rlp1.local_date
 order by rlp1.local_date, rlp1.team_id;
+CREATE UNIQUE INDEX rolling_team_pitch_game_team_idx ON rolling_team_pitch_stats (game_id, team_id);
+CREATE INDEX rolling_team_pitch_game_idx ON rolling_team_pitch_stats (game_id);
+CREATE INDEX rolling_team_pitch_team_idx ON rolling_team_pitch_stats (team_id);
 
+
+
+-- Duplicate rolling team pitch stats
 DROP TEMPORARY TABLE IF EXISTS rolling_team_pitch_stats2;
 CREATE TEMPORARY TABLE rolling_team_pitch_stats2 AS
 SELECT * from rolling_team_pitch_stats;
+CREATE UNIQUE INDEX rolling_team_pitch_game_team_idx ON rolling_team_pitch_stats2 (game_id, team_id);
+CREATE INDEX rolling_team_pitch_game_idx ON rolling_team_pitch_stats2 (game_id);
+CREATE INDEX rolling_team_pitch_team_idx ON rolling_team_pitch_stats2 (team_id);
 
 
 
-
+-- Create temp look up table for rolling stats for team batting
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_team_batting;
 CREATE TEMPORARY TABLE t_rolling_lookup_team_batting ENGINE=MEMORY AS
 SELECT
-      g.game_id,
-      local_date,
-      team_id,
-      atBat,
-      Hit,
+		g.game_id,
+		local_date,
+		team_id,
+		atBat,
+		Hit,
        stolenBaseHome,
        stolenBase2B,
        stolenBase3B,
@@ -132,18 +148,19 @@ SELECT
        Strikeout
     FROM team_batting_counts bc
     JOIN game g ON g.game_id = bc.game_id
-   ORDER BY team_id, local_date;
+	ORDER BY team_id, local_date;
 CREATE UNIQUE INDEX rolling_lookup_date_game_batter_id_idx ON t_rolling_lookup_team_batting (game_id, team_id, local_date);
 CREATE UNIQUE INDEX rolling_lookup_game_batter_id_idx ON t_rolling_lookup_team_batting (game_id, team_id);
 CREATE INDEX rolling_lookup_game_id_idx ON t_rolling_lookup_team_batting (game_id);
 CREATE INDEX rolling_lookup_local_date_idx ON t_rolling_lookup_team_batting (local_date);
 CREATE INDEX rolling_lookup_batter_idx ON t_rolling_lookup_team_batting (team_id);
 
+-- Duplicate temp table rolling stats for team batting
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_team_batting2;
 CREATE TEMPORARY TABLE t_rolling_lookup_team_batting2
 Select * from t_rolling_lookup_team_batting;
 
--- Create the rolling 100 days table
+-- Create table for rolling 100 days stats for team batting
 DROP TEMPORARY TABLE IF EXISTS rolling_team_batting_stats;
 CREATE TEMPORARY TABLE rolling_team_batting_stats AS
 SELECT
@@ -158,14 +175,25 @@ SELECT
 FROM t_rolling_lookup_team_batting rlb1
 JOIN t_rolling_lookup_team_batting2 rlb2 on rlb1.team_id = rlb2.team_id
 AND rlb2.local_date between date_sub(rlb1.local_date, interval 100 day ) and rlb1.local_date
-GROUP BY rlb1.local_date, rlb1.game_id, rlb1.team_id, rlb1.stolenBaseHome, rlb1.stolenBase2B, rlb1.stolenBase3B,
-         rlb1.Home_Run, rlb1.Hit, rlb1.atBat, rlb1.Strikeout, rlb1.Sac_Fly,
-         rlb1.Sac_Bunt, rlb1.Sac_Fly_DP, rlb1.Sac_Fly
-order by rlb1.local_date, rlb1.team_id;
+GROUP BY rlb1.local_date, rlb1.game_id, rlb1.team_id
+ORDER BY rlb1.local_date, rlb1.team_id;
+CREATE UNIQUE INDEX rolling_team_batting_game_team_idx ON rolling_team_batting_stats (game_id, team_id);
+CREATE INDEX rolling_team_batting_game_idx ON rolling_team_batting_stats (game_id);
+CREATE INDEX rolling_team_batting_team_idx ON rolling_team_batting_stats (team_id);
 
+
+-- Create copy of table for rolling 100 days stats for team batting
 DROP TEMPORARY TABLE IF EXISTS rolling_team_batting_stats2;
 CREATE TEMPORARY TABLE rolling_team_batting_stats2 AS
 SELECT * from rolling_team_batting_stats;
+CREATE UNIQUE INDEX rolling_team_batting_game_team_idx ON rolling_team_batting_stats2 (game_id, team_id);
+CREATE INDEX rolling_team_batting_game_idx ON rolling_team_batting_stats2 (game_id);
+CREATE INDEX rolling_team_batting_team_idx ON rolling_team_batting_stats2 (team_id);
+
+
+
+
+
 
 
 DROP TABLE IF EXISTS baseball_stats;

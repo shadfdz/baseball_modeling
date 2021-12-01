@@ -4,8 +4,18 @@
 #
 #    pip-compile --output-file=requirements.txt requirements.in
 #
+click==8.0.3
+    # via flask
+flask==2.0.2
+    # via -r requirements.in
+itsdangerous==2.0.1
+    # via flask
+jinja2==3.0.3
+    # via flask
 joblib==1.0.1
     # via scikit-learn
+markupsafe==2.0.1
+    # via jinja2
 numpy==1.18.4
     # via
     #   -r requirements.in
@@ -55,5 +65,7 @@ tenacity==8.0.1
     # via plotly
 threadpoolctl==2.2.0
     # via scikit-learn
+werkzeug==2.0.2
+    # via flask
 xlsxwriter==3.0.1
     # via -r requirements.in

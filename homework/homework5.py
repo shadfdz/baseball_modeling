@@ -309,7 +309,7 @@ def get_df_as_matrix(
 def main():
 
     # Enter connection arguments in pymysql.connect()
-    connection = pymysql.connect()
+    connection = pymysql.connect(user="guest", password="squidgames", db="baseball")
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
     df = pd.read_sql(query, connection)
@@ -376,6 +376,7 @@ def main():
             "home_streak",
         ],
     )
+
     # create new feature type dict without dropped columns and new features
     feature_type_dict = set_feature_type_dict(df_processed)
     resp, pred = set_response_predictors(df_processed)
