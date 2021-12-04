@@ -202,6 +202,7 @@ select
 tr.series_streak,
 tr.home_streak,
 tr.win_lose,
+tr.local_date,
 rsp.FIP,
 rsp.SP_WHIP,
 rsp.SP_KBB,
@@ -244,4 +245,5 @@ join rolling_team_batting_stats rtbs on tr.game_id = rtbs.game_id and tr.team_id
 join rolling_team_batting_stats2 rtbs2 on tr.game_id = rtbs2.game_id and tr.opponent_id = rtbs2.team_id
 join rolling_team_pitch_stats rtps on tr.game_id = rtps.game_id and tr.team_id = rtps.team_id
 join rolling_team_pitch_stats2 rtps2 on tr.game_id = rtps2.game_id and tr.opponent_id = rtps2.team_id
-WHERE home_away = 'H';
+WHERE home_away = 'H'
+order by tr.local_date desc;

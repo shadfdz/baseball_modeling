@@ -1,4 +1,5 @@
 import sys
+import time
 from itertools import combinations
 
 import bin_response_by_predictor as brp
@@ -12,7 +13,6 @@ from scipy import stats
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 pd.set_option("display.width", 200)
@@ -100,7 +100,7 @@ def create_html_file(df, file_name):
     :return: None
     """
     df_html = df.to_html(index=False, escape=False)
-    file = open("../output/" + file_name + ".html", "w")
+    file = open("./output/" + file_name + ".html", "w")
     file.write(df_html)
     file.close()
 
@@ -122,6 +122,7 @@ def show_var_rankings(df, resp, pred):
     feature_imp = pd.Series(clf.feature_importances_, index=pred).sort_values(
         ascending=False
     )
+    feature_imp = pd.DataFrame(feature_imp.reset_index(name="Ranking"))
     return feature_imp
 
 
@@ -242,9 +243,10 @@ def plot_correlation_matrix(df_corr, title, file):
             ticktext=y,
         ),
     )
-    file_name = "../output/" + file + ".html"
+    # this was changes
+    file_name = file + ".html"
     fig.write_html(
-        file=file_name,
+        file="./output/" + file_name,
         include_plotlyjs="cdn",
     )
     file_link = '<a href="{}">{}</a>'.format(file_name, title)
@@ -307,12 +309,17 @@ def get_df_as_matrix(
 
 
 def main():
+    # sleep
+    time.sleep(30)
 
-    # Enter connection arguments in pymysql.connect()
-    connection = pymysql.connect(user="guest", password="squidgames", db="baseball")
+    # Enter connection arguments in pymysql.connect() and get data
+    connection = pymysql.connect(
+        host="db", port=3306, user="", password="", db="baseball"
+    )
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
     df = pd.read_sql(query, connection)
+    df = df.drop(["local_date"], axis=1)
     cursor.close()
 
     # Get predictor and response
@@ -329,7 +336,7 @@ def main():
     # dropping null since about < 1%
     df_processed = df.dropna(axis=0)
 
-    # Plot each variable
+    # # Plot each variable
     predictor_plot = ppr.PlotPredictorResponse(df_processed, feature_type_dict)
     predictor_plot.plot_response_by_predictors(resp, pred)
 
@@ -338,19 +345,19 @@ def main():
     label_encoder = LabelEncoder()
     label_encoder.fit_transform(df_processed[resp])
     df_processed[resp] = label_encoder.transform(df_processed[resp])
-
+    # get df with rankings
     var_rank = show_var_rankings(df_processed, resp, pred)
-    print(var_rank)
+    create_html_file(var_rank, "variable_rankings")
 
     # Get Correlation Metrics
-    # plot each predictor along with response
-    plot_pred = ppr.PlotPredictorResponse(df_processed, feature_type_dict)
-    plot_pred.plot_response_by_predictors(resp, pred)
-
     # get correlation metrics for each continuous predictor combinations
     cont_correlation_df = get_correlation_metrics(
         df_processed, resp, cont_predictors, cont_predictors, feature_type_dict
     )
+
+    # plot each predictor along with response
+    plot_pred = ppr.PlotPredictorResponse(df_processed, feature_type_dict)
+    plot_pred.plot_response_by_predictors(resp, pred)
 
     # creat html file
     create_html_file(cont_correlation_df, "corr_table")
@@ -389,9 +396,14 @@ def main():
     X = df_processed_model[pred].values
     y = df_processed_model[resp].values
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=1
-    )
+    # create train test split
+    X_train = X[: int(X.shape[0] * 0.8)]
+    X_test = X[(int(X.shape[0] * 0.8)) :]
+    y_train = y[: int(X.shape[0] * 0.8)]
+    y_test = y[(int(X.shape[0] * 0.8)) :]
+
+    X_train = X
+
     # adjust log arg n_jobs for faster
     log_model = LogisticRegression()
     log_model.fit(X_train, y_train)
@@ -426,15 +438,15 @@ def main():
     corr_matrix_pred_df = pd.DataFrame(
         corr_df_list, columns=["Correlation Plot by Predictor Type"]
     )
-    create_html_file(corr_matrix_pred_df, "corr_matrix_tables")
+    corr_matrix_pred_df.to_html(render_links=True)
 
     # Brute force Tables
     response_bins = brp.BinResponseByPredictor(df_processed, feature_type_dict)
 
     # brute force table for cont predictors
     brute_force_table_df = []
-    title = "Link"
     for pred in combinations(cont_predictors, 2):
+        title = pred[0] + "And" + pred[1]
         df_bins, bin_list1, bin_list2 = response_bins.bin_2d_response_by_predictors(
             resp, pred[0], pred[1], 8
         )

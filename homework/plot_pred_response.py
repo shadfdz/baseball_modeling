@@ -62,7 +62,7 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file_path = "../output/" + response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
             file=file_path,
             include_plotlyjs="cdn",
@@ -86,7 +86,7 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title="Distribution",
         )
-        file_path = "../output/" + response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         distribution_plot.write_html(
             file=file_path,
             include_plotlyjs="cdn",
@@ -106,7 +106,7 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file_path = "../output/" + response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
             file=file_path,
             include_plotlyjs="cdn",
@@ -124,7 +124,7 @@ class PlotPredictorResponse:
             xaxis_title=predictor,
             yaxis_title=response,
         )
-        file_path = "../output/" + response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
             file=file_path,
             include_plotlyjs="cdn",
@@ -177,7 +177,7 @@ class PlotPredictorResponse:
 
         fig.show()
         fig.write_html(
-            file="../output/" + response + "by" + pred + ".html",
+            file="./output/" + response + "by" + pred + ".html",
             include_plotlyjs="cdn",
         )
 
@@ -201,6 +201,6 @@ class PlotPredictorResponse:
             xaxis_title=x_title,
             yaxis_title=y_title,
         )
-        file_path = "../output/" + fname + ".html"
+        file_path = "./output/" + fname + ".html"
         fig.write_html(file=file_path, include_plotlyjs="cdn")
         return file_path

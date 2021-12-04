@@ -69,3 +69,5 @@ werkzeug==2.0.2
     # via flask
 xlsxwriter==3.0.1
     # via -r requirements.in
+cryptography==36.0.0
+
