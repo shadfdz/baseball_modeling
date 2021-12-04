@@ -22,18 +22,13 @@
 
 `pre-commit run --all-files`
 
-# HW2 Info
+# HW 6
 
-- MySql Server version 8.0.26
-- HW 2 dataset [can be found here](https://teaching.mrsharky.com/sdsu_fall_2020_lecture03.html#/10/1)
+Please enter user as root as set password in docker-compose.
+These credentials will be need for run_scripts.sh and homework5.py on line 317
 
-# HW3 Info
+Outputs can be opened under index.html in the homework folder.
 
-- Please enter respective pass key for db credentials and access
-- JDBC connector for MySql Server version 8.0.26 located under dbConnectors folder
+Temporarily disabled flake8 after pre-commit due to conflict with black
 
-# Midterm
-
-- When opening the spreadsheet, the relative path of Excel must be set.
-- To bypass this issue, right click on a cell, and insert a hyperlink from the output directory.
-- This will automatically activate the links!
+Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh

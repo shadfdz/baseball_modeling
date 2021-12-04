@@ -402,8 +402,6 @@ def main():
     y_train = y[: int(X.shape[0] * 0.8)]
     y_test = y[(int(X.shape[0] * 0.8)) :]
 
-    X_train = X
-
     # adjust log arg n_jobs for faster
     log_model = LogisticRegression()
     log_model.fit(X_train, y_train)
