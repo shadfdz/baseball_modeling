@@ -13,15 +13,16 @@ def set_response_predictors(dataframe):
     :param dataframe: data frame
     :return: list of response and predictors
     """
-    resp = "Class"
+    resp = "species"
     predictors = dataframe.loc[:, ~dataframe.columns.isin([resp])].columns.to_list()
-    pred_filtered = []
-    for pred in predictors:
-        pred_filtered.append(pred)
-    features = pred_filtered.copy()
-    features.append(resp)
+    # # this is where predictors are filtered i.e ID or date time
+    # pred_filtered = []
+    # for pred in predictors:
+    #     pred_filtered.append(pred)
+    features = predictors.copy()
+    features = features.append(resp)
 
-    return resp, pred_filtered, features
+    return resp, predictors, features
 
 
 def set_feature_type_dict(dataframe):
@@ -44,13 +45,14 @@ def set_feature_type_dict(dataframe):
     return feature_type_dict
 
 
-def set_cat_cont_predictors(feature_type_dict, response):
+def set_cat_cont_predictors(feature_type_dict, resp):
     """
     Functions set predictors to either categorical and continuous lists
     :param feature_type_dict: dict with feature type of each pred
     :param response: response
     :return: feature type dict
     """
+    response = resp
     cat_predictors = []
     cont_predictors = []
     for key in feature_type_dict.keys():
@@ -137,11 +139,11 @@ def show_var_rankings(df, resp, pred, encode=True):
 def main():
 
     # get data
-    df_raw = pd.read_csv("../datasets/Iris.csv")
+    df_raw = pd.read_csv("../datasets/iris.csv")
 
     # set resp and pred and get cat and cont predictors
     resp, pred, features = set_response_predictors(df_raw)
-    df = df_raw[features]
+    df = df_raw
     feature_type_dict = set_feature_type_dict(df)
     cat_pred, cont_pred = set_cat_cont_predictors(feature_type_dict, resp)
 
@@ -169,6 +171,10 @@ def main():
     )
     # add Plot to description file
     hh.append_to_html_file(plot_file, desc_html_file)
+
+    # plot binned mean response
+
+    # t value p values
 
     # Get correlation
 

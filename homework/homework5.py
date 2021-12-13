@@ -25,7 +25,7 @@ def set_response_predictors(dataframe):
     :param dataframe: data frame
     :return: list of response and predictors
     """
-    resp = "win_lose"
+    resp = "sepal_length"
     predictors = dataframe.loc[:, ~dataframe.columns.isin([resp])].columns.to_list()
     pred_filtered = []
     for pred in predictors:
@@ -76,6 +76,13 @@ def set_cat_cont_predictors(feature_type_dict, response, p):
         print(cat_predictors)
         print(cont_predictors)
     return cat_predictors, cont_predictors
+
+
+def get_linear_model_fit(df, response, pred):
+    predictor = stats.add_constant(df[pred])
+    lin_reg_model_fit = stats.OLS(df[response], predictor).fit()
+
+    return lin_reg_model_fit
 
 
 def describe_df(df):
@@ -309,18 +316,18 @@ def get_df_as_matrix(
 
 
 def main():
-    # sleep
-    time.sleep(30)
 
+    # sleep for docker
+    #
     # Enter connection arguments in pymysql.connect() and get data
-    connection = pymysql.connect(
-        host="db", port=3306, user="", password="", db="baseball"
-    )
+    connection = pymysql.connect(host="localhost", user="", password="", db="")
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
     df = pd.read_sql(query, connection)
     df = df.drop(["local_date"], axis=1)
     cursor.close()
+
+    df = pd.read_csv("../dataset/iris.csv")
 
     # Get predictor and response
     resp, pred = set_response_predictors(df)
@@ -336,15 +343,28 @@ def main():
     # dropping null since about < 1%
     df_processed = df.dropna(axis=0)
 
-    # # Plot each variable
+    # Plot each variable
     predictor_plot = ppr.PlotPredictorResponse(df_processed, feature_type_dict)
     predictor_plot.plot_response_by_predictors(resp, pred)
+
+    # plot response bin means
 
     # Variable Rankings
     # encode response
     label_encoder = LabelEncoder()
     label_encoder.fit_transform(df_processed[resp])
     df_processed[resp] = label_encoder.transform(df_processed[resp])
+
+    # show p and t values
+
+    # get summary for each model and print t and p values
+    for pred in cont_predictors:
+        model_obj = get_linear_model_fit(df, resp, pred)
+        print("\nRegression Summary for '" + pred + "' as a predictor")
+        print(model_obj.summary())
+        print("P-value {:.6e}".format(model_obj.tvalues[1]))
+        print("T-value {:.6e}\n".format(model_obj.pvalues[1]))
+
     # get df with rankings
     var_rank = show_var_rankings(df_processed, resp, pred)
     create_html_file(var_rank, "variable_rankings")
@@ -367,20 +387,7 @@ def main():
     df_processed = df_processed.drop(
         axis=1,
         labels=[
-            "O_StolenBaseBB",
-            "StolenBaseBB",
-            "O_FIP",
-            "O_SP_KBB",
-            "O_SP_WHIP",
-            "O_StrikeWalk",
-            "series_streak",
-            "O_HitOuts",
-            "StrikeAtBat",
-            "TeamStrikeAtBat",
-            "StrikeWalk",
-            "SP_WHIP",
-            "SP_KBB",
-            "home_streak",
+            "StolenBaseBB_Diff",
         ],
     )
 

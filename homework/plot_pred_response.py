@@ -62,9 +62,9 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file_path = "./output/" + response + "by" + predictor + ".html"
+        file_path = response + "by" + predictor + ".html"
         fig.write_html(
-            file=file_path,
+            file="./output/" + file_path,
             include_plotlyjs="cdn",
         )
         return file_path
@@ -86,9 +86,9 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title="Distribution",
         )
-        file_path = "./output/" + response + "by" + predictor + ".html"
+        file_path = response + "by" + predictor + ".html"
         distribution_plot.write_html(
-            file=file_path,
+            file="./output/" + file_path,
             include_plotlyjs="cdn",
         )
         return file_path
@@ -106,9 +106,9 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file_path = "./output/" + response + "by" + predictor + ".html"
+        file_path = response + "by" + predictor + ".html"
         fig.write_html(
-            file=file_path,
+            file="./output/" + file_path,
             include_plotlyjs="cdn",
         )
         return file_path
@@ -124,9 +124,9 @@ class PlotPredictorResponse:
             xaxis_title=predictor,
             yaxis_title=response,
         )
-        file_path = "./output/" + response + "by" + predictor + ".html"
+        file_path = response + "by" + predictor + ".html"
         fig.write_html(
-            file=file_path,
+            file="./output/" + file_path,
             include_plotlyjs="cdn",
         )
         return file_path

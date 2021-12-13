@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-USER=''
-PASS=''
+USER='root'
+PASS='root'
 HOST=db
 PORT=3306
 DB_SCRIPT=./hw5.sql
