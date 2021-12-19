@@ -18,20 +18,21 @@ class PlotPredictorResponse:
         self.feature_type_dict = feature_type_dictionary
 
     def plot_response_by_predictors(self, response, predictors):
+        plot_paths = []
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    self.cont_resp_cont_pred(response, pred)
+                    plot_paths.append(self.cont_resp_cont_pred(response, pred))
                 else:
-                    self.cont_resp_cat_pred(response, pred)
+                    plot_paths.append(self.cont_resp_cat_pred(response, pred))
             else:
                 if self.feature_type_dict.get(pred) == "continuous":
-                    self.cat_resp_cont_pred(response, pred)
+                    plot_paths.append(self.cat_resp_cont_pred(response, pred))
                 else:
-                    self.cat_resp_cat_pred(response, pred)
+                    plot_paths.append(self.cat_resp_cat_pred(response, pred))
+        return plot_paths
 
     def cat_resp_cont_pred(self, response, predictor):
-
         df_plot_temp = self.df[self.df[predictor].notnull()]
         categories = df_plot_temp[response].unique()
         x1 = df_plot_temp[predictor][df_plot_temp[response] == categories[0]]
@@ -61,12 +62,12 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file = response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
-            file="../output/" + file,
+            file=file_path,
             include_plotlyjs="cdn",
         )
-        return file
+        return file_path
 
     def cont_resp_cat_pred(self, response, predictor):
 
@@ -85,12 +86,12 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title="Distribution",
         )
-        file = response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         distribution_plot.write_html(
-            file="../output/" + file,
+            file=file_path,
             include_plotlyjs="cdn",
         )
-        return file
+        return file_path
 
     def cat_resp_cat_pred(self, response, predictor):
         dum_resp_df = pd.get_dummies(self.df[response])
@@ -105,12 +106,12 @@ class PlotPredictorResponse:
             xaxis_title=response,
             yaxis_title=predictor,
         )
-        file = response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
-            file="../output/" + file,
+            file=file_path,
             include_plotlyjs="cdn",
         )
-        return file
+        return file_path
 
     def cont_resp_cont_pred(self, response, predictor):
         x = self.df[predictor]
@@ -123,14 +124,15 @@ class PlotPredictorResponse:
             xaxis_title=predictor,
             yaxis_title=response,
         )
-        file = response + "by" + predictor + ".html"
+        file_path = "./output/" + response + "by" + predictor + ".html"
         fig.write_html(
-            file="../output/" + file,
+            file=file_path,
             include_plotlyjs="cdn",
         )
-        return file
+        return file_path
 
-    def plot_diff_with_MOR(self, df_bins, response, pred):
+    @staticmethod
+    def plot_diff_with_mor(df_bins, response, pred):
 
         bin_cat_list = df_bins["Bin"].tolist()
         cat = []
@@ -175,6 +177,30 @@ class PlotPredictorResponse:
 
         fig.show()
         fig.write_html(
-            file="../output/" + response + "by" + pred + ".html",
+            file="./output/" + response + "by" + pred + ".html",
             include_plotlyjs="cdn",
         )
+
+    @staticmethod
+    def plot_simple_bar(x, y, x_title="", y_title="", title="", fname=""):
+        x = x
+        y = y
+
+        fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=x,
+                    y=y,
+                    textposition="auto",
+                )
+            ]
+        )
+
+        fig.update_layout(
+            title=title,
+            xaxis_title=x_title,
+            yaxis_title=y_title,
+        )
+        file_path = "./output/" + fname + ".html"
+        fig.write_html(file=file_path, include_plotlyjs="cdn")
+        return file_path

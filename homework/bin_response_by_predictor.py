@@ -42,7 +42,7 @@ def get_bin_attributes(df, response):
 
 class BinResponseByPredictor:
     def __init__(self, dataframe, feature_type_dictionary, bin_count=None):
-        self.df = dataframe
+        self.df = dataframe.copy()
         self.feature_type_dict = feature_type_dictionary
         self.bin_count = bin_count
 

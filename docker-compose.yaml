@@ -1,0 +1,43 @@
+version: "3.7"
+services:
+  db:
+    image: mysql:latest
+    restart: always
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_USER: "test"
+      MYSQL_PASSWORD: ""
+      MYSQL_DATABASE: "baseball"
+    volumes:
+      - ./db/baseball.sql:/docker-entrypoint-initdb.d/baseball.sql:rw
+    networks:
+      - backend
+
+  homework:
+    build: homework
+    restart: always
+    ports:
+      - "5000:5000"
+    links:
+      - db
+    networks:
+      - backend
+    volumes:
+      - ./homework/output:/homework/output
+    depends_on:
+      - db
+    command:
+      [
+        "./wait-for-it.sh",
+        "db:3306",
+        "--timeout=10",
+        "--strict",
+        "--",
+        "bash",
+        "run_scripts.sh",
+      ]
+#
+networks:
+  backend:
