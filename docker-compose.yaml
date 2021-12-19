@@ -33,6 +33,7 @@ services:
         "./wait-for-it.sh",
         "db:3306",
         "--timeout=10",
+        "--quiet",
         "--strict",
         "--",
         "bash",

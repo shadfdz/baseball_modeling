@@ -4,18 +4,8 @@
 #
 #    pip-compile --output-file=requirements.txt requirements.in
 #
-click==8.0.3
-    # via flask
-flask==2.0.2
-    # via -r requirements.in
-itsdangerous==2.0.1
-    # via flask
-jinja2==3.0.3
-    # via flask
 joblib==1.0.1
     # via scikit-learn
-markupsafe==2.0.1
-    # via jinja2
 numpy==1.18.4
     # via
     #   -r requirements.in
@@ -32,15 +22,7 @@ patsy==0.5.2
     # via statsmodels
 plotly==5.3.1
     # via -r requirements.in
-py4j==0.10.9
-    # via pyspark
 pymysql==1.0.2
-    # via -r requirements.in
-pyspark==3.0.3
-    # via
-    #   -r requirements.in
-    #   pyspark-stubs
-pyspark-stubs==3.0.0.post2
     # via -r requirements.in
 python-dateutil==2.8.2
     # via pandas
@@ -65,9 +47,5 @@ tenacity==8.0.1
     # via plotly
 threadpoolctl==2.2.0
     # via scikit-learn
-werkzeug==2.0.2
-    # via flask
 xlsxwriter==3.0.1
     # via -r requirements.in
-cryptography==36.0.0
-

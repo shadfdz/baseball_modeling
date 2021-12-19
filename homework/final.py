@@ -382,13 +382,15 @@ def get_brute_force_tables(df, resp, predictors, feature_type_dict):
 def main():
 
     # get data
-    connection = pymysql.connect(host="", user="", password="", db="baseball")
+    connection = pymysql.connect(host="db", user="", password="", db="baseball")
+
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
     df_raw_data = pd.read_sql(query, connection)
     cursor.close()
 
-    df_raw_data.fillna(0.0)
+    print(df_raw_data.isnull().sum())
+
     df_raw = df_raw_data.drop(["local_date", "Year"], axis=1)
 
     # set resp and pred and get cat and cont predictors
@@ -477,7 +479,6 @@ def main():
             "TP_hr_so",
             "TP_sdt_fo",
             "TP_a_so_10",
-            "T_win_50",
             "TB_ARHR",
             "TB_BA",
         ],

@@ -10,5 +10,5 @@ DB_SCRIPT=./baseball_stats.sql
 # alter db table
 mysql -u$USER -p$PASS -h $HOST -P $PORT <$DB_SCRIPT
 
-python ./homework5.py
+python ./final.py
 
