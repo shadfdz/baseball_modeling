@@ -34,3 +34,7 @@ Temporarily disabled flake8 after pre-commit due to conflict with black
 Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh
 
 # Final
+Please create password in docker compose for the database. 
+Add this password as an argument for the db connection in line 385 of final.py
+
+For the output, check index.html in output.
