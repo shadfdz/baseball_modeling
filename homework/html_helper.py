@@ -31,11 +31,14 @@ def create_html_file(file_name, title, header_list, df_list, class_name):
     with open(file_path, "w") as file:
         file.write(html_body.format(title, string_to_file))
 
-    return file_path
-
 
 def append_to_html_file(first_file, second_file):
 
     with open(first_file, "r") as first, open(second_file, "a") as second:
         for line in first:
             second.writelines(line)
+
+
+def append_line_to_html_file(file, lines):
+    with open(file, "a") as second:
+        second.writelines(lines)

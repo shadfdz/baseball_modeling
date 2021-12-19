@@ -32,3 +32,5 @@ Outputs can be opened under index.html in the homework folder.
 Temporarily disabled flake8 after pre-commit due to conflict with black
 
 Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh
+
+# Final

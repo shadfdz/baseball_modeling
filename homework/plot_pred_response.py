@@ -14,7 +14,7 @@ class PlotPredictorResponse:
     """
 
     def __init__(self, dataframe, feature_type_dictionary):
-        self.df = dataframe
+        self.df = dataframe.copy()
         self.feature_type_dict = feature_type_dictionary
 
     def plot_response_by_predictors(self, response, predictors):
@@ -175,11 +175,12 @@ class PlotPredictorResponse:
             + pred
         )
 
-        fig.show()
+        file_path = "binned" + response + "by" + pred + ".html"
         fig.write_html(
-            file="./output/" + response + "by" + pred + ".html",
+            file="./output/" + file_path,
             include_plotlyjs="cdn",
         )
+        return file_path
 
     @staticmethod
     def plot_simple_bar(x, y, x_title="", y_title="", title="", fname=""):
@@ -201,6 +202,56 @@ class PlotPredictorResponse:
             xaxis_title=x_title,
             yaxis_title=y_title,
         )
-        file_path = "./output/" + fname + ".html"
-        fig.write_html(file=file_path, include_plotlyjs="cdn")
+        file_path = fname + ".html"
+        fig.write_html(file="./output/" + file_path, include_plotlyjs="cdn")
         return file_path
+
+    @staticmethod
+    def plot_correlation_matrix(df_corr, title, file):
+        """
+        Plots correlation matrix
+        :param df_corr:
+        :param title:
+        :param file:
+        :return: file html
+        """
+        z = np.around(df_corr.to_numpy(), 2)
+        x = df_corr.columns.to_list()
+        y = df_corr.index.to_list()
+        if df_corr.columns.dtype != "object":
+            x = [i for i in np.around(x, 3)]
+        if df_corr.index.dtype != "object":
+            y = [i for i in np.around(y, 3)]
+
+        fig = ff.create_annotated_heatmap(
+            z=z,
+            colorscale="thermal",
+            showscale=True,
+            hoverongaps=True,
+        )
+        fig.update_layout(
+            overwrite=True,
+            title=title,
+            xaxis=dict(
+                ticks="",
+                dtick=1,
+                side="top",
+                gridcolor="rgb(0, 0, 0)",
+                tickvals=list(range(len(x))),
+                ticktext=x,
+            ),
+            yaxis=dict(
+                ticks="",
+                dtick=1,
+                ticksuffix="   ",
+                tickvals=list(range(len(y))),
+                ticktext=y,
+            ),
+        )
+        # this was changes
+        file_name = file + ".html"
+        fig.write_html(
+            file="./output/" + file_name,
+            include_plotlyjs="cdn",
+        )
+        return file_name
