@@ -10,11 +10,11 @@ import pymysql
 import statsmodels.api
 from plotly import express as px
 from scipy import stats
-from sklearn import metrics, svm
+from sklearn import svm
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 
@@ -129,7 +129,7 @@ def describe_data_to_html(df, feature_type_dict, resp, pred):
         "describe",
     )
     # Plot Nulls
-    plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
+    plotter = ppr.plot_response_by_predictors(df, feature_type_dict)
     df_null = df.isnull().sum().to_frame(name="null_count")
     plot_file = plotter.plot_simple_bar(
         x=df_null.index.to_list(),
@@ -180,10 +180,11 @@ def get_t_p_values(df, resp, predictors):
     y = resp
     for pred in predictors:
         row_list = []
-        X = pred
-        linear_regression_model = statsmodels.api.OLS(df[y], df[pred])
+        predictor_w_constant = statsmodels.api.add_constant(df[pred])
+        linear_regression_model = statsmodels.api.OLS(df[y], predictor_w_constant)
+
         linear_regression_model_fitted = linear_regression_model.fit()
-        print(f"Variable: {X}")
+        print(f"Variable: {pred}")
         print(linear_regression_model_fitted.summary())
 
         t_value = round(linear_regression_model_fitted.tvalues[0], 5)
@@ -193,8 +194,8 @@ def get_t_p_values(df, resp, predictors):
 
         fig = px.scatter(x=df[pred], y=df[resp], trendline="ols")
         fig.update_layout(
-            title=f"Variable: {X}: (t-value={t_value}) (p-value={p_value})",
-            xaxis_title=f"Variable: {X}",
+            title=f"Variable: {pred}: (t-value={t_value}) (p-value={p_value})",
+            xaxis_title=f"Variable: {pred}",
             yaxis_title=resp,
         )
         file_path = "scatter_" + resp + "by" + pred + ".html"
@@ -213,10 +214,10 @@ def get_t_p_values(df, resp, predictors):
 
 def get_correlation_metrics(df, response, predictors):
     """
-    Modified for this hw, returns correlation metrics
-    :param df:
-    :param response:
-    :param predictors
+    Returns correlation for response and predictor
+    :param df: dataframe
+    :param response: response variable
+    :param predictors: predictor variable
     :return: df of correlation metrics with file links to the plot of each predictor
     """
     corr_list = []
@@ -241,10 +242,10 @@ def get_correlation_metrics(df, response, predictors):
 def get_correlation(df, pred1, pred2, feature_type_dict):
     """
     Function gets correlation based on feature type dict
-    :param df:
-    :param pred1:
-    :param pred2:
-    :param feature_type_dict:
+    :param df: dataframe
+    :param pred1: predictor variable 1
+    :param pred2: predictor variable 2
+    :param feature_type_dict: dictionary containing feature data type
     :return: correlation value
     """
 
@@ -264,11 +265,11 @@ def get_correlation(df, pred1, pred2, feature_type_dict):
 def get_correlation_matrix(df, list1_pred, list2_pred, feature_type_dict):
     """
     Creates a correlation matrix between two features
-    :param df:
-    :param list1_pred:
-    :param list2_pred:
-    :param feature_type_dict:
-    :return: df as a matrix
+    :param df: dataframe
+    :param list1_pred: list of predictors
+    :param list2_pred: list of predictors
+    :param feature_type_dict: dictionary containing feature types
+    :return: correlation matrix as a dataframe
     """
 
     corr_matrix_df_list = []
@@ -302,15 +303,15 @@ def get_df_as_matrix(
     df, list_pred1, list_pred2, category, attribute, midpoint1=False, midpoint2=False
 ):
     """
-    Pivots a df into a matrix. Midpoint true shows interval center
-    :param df: Pandas df
+    Pivots a df into a matrix with correlation as intervals in each dimension . Midpoint true shows interval center
+    :param df: dataframe
     :param list_pred1: columns categories
     :param list_pred2: columns categories
-    :param category: measure
+    :param category: feature
     :param attribute:
-    :param midpoint1:
-    :param midpoint2:
-    :return:
+    :param midpoint1: bin mid point
+    :param midpoint2: bin midpoint
+    :return: dataframe of correlation matrix
     """
     list1 = list_pred1
     list2 = list_pred2
@@ -347,7 +348,6 @@ def get_brute_force_tables(df, resp, predictors, feature_type_dict):
     :param feature_type_dict: feature type dict
     :return:
     """
-    plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
     response_bins = brp.BinResponseByPredictor(df, feature_type_dict)
 
     # brute force table for predictors
@@ -362,7 +362,7 @@ def get_brute_force_tables(df, resp, predictors, feature_type_dict):
         int_1 = get_bin_intervals(bin_list1)
         int_2 = get_bin_intervals(bin_list2)
         file_name = pred[0] + pred[1] + "response"
-        file_link = plotter.plot_correlation_matrix(
+        file_link = ppr.plot_correlation_matrix(
             get_df_as_matrix(df_bins, int_1, int_2, "Bin", "RespBinMean", True, True),
             title,
             file_name,
@@ -383,19 +383,22 @@ def main():
 
     # get data
     connection = pymysql.connect(host="db", user="", password="", db="baseball")
+    # connection = pymysql.connect(
+    #     host="localhost", user="guest", password="squidgames", db="baseball"
+    # )
 
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
     df_raw_data = pd.read_sql(query, connection)
     cursor.close()
 
+    # print raw data nulls
     print(df_raw_data.isnull().sum())
 
-    df_raw = df_raw_data.drop(["local_date", "Year"], axis=1)
+    df = df_raw_data.drop(["local_date", "Year"], axis=1)
 
     # set resp and pred and get cat and cont predictors
-    resp, pred, features = set_response_predictors(df_raw)
-    df = df_raw
+    resp, pred, features = set_response_predictors(df)
     feature_type_dict = set_feature_type_dict(df)
     cat_pred, cont_pred = set_cat_cont_predictors(feature_type_dict, resp)
 
@@ -408,8 +411,7 @@ def main():
     }
 
     # plot predictors
-    plotter = ppr.PlotPredictorResponse(df, feature_type_dict)
-    plot_path_list = plotter.plot_response_by_predictors(resp, pred)
+    plot_path_list = ppr.plot_response_by_predictors(df, resp, pred, feature_type_dict)
     pred_plot_df = create_df_hyperlinks(plot_path_list, pred, "Plots")
 
     # plot binned mean response
@@ -419,7 +421,7 @@ def main():
     for bins, predictor in zip(bin_response_df_list, pred):
         print(predictor)
         print(bins)
-        bin_plot_paths.append(plotter.plot_diff_with_mor(bins, resp, predictor))
+        bin_plot_paths.append(ppr.plot_diff_with_mor(bins, resp, predictor))
     bin_plots_df = create_df_hyperlinks(bin_plot_paths, pred, "Mean of Response")
     pred_plot_df = pred_plot_df.join(bin_plots_df)
 
@@ -438,7 +440,7 @@ def main():
 
     # generate correlation matrix for predictors
     corr_matrix = get_correlation_matrix(df, cont_pred, cont_pred, feature_type_dict)
-    corr_plot_path_list = plotter.plot_correlation_matrix(
+    corr_plot_path_list = ppr.plot_correlation_matrix(
         corr_matrix, "Continuous", "cont_cont_pred"
     )
     corr_plot_df = create_df_hyperlinks(
@@ -460,14 +462,6 @@ def main():
     )
     corr_metrics_df = corr_metrics_df.sort_values(by="Correlation", ascending=False)
     to_html_dict["Brute Force and Correlation Metrics"] = corr_metrics_df
-
-    hh.create_html_file(
-        "index",
-        "Baseball Data Set",
-        to_html_dict.keys(),
-        to_html_dict.values(),
-        "describe",
-    )
 
     # droppings some columns that are highly correlated
     df_processed = df.drop(
@@ -491,6 +485,7 @@ def main():
         feature_type_dict_processed, resp
     )
 
+    # scale data
     scaler = MinMaxScaler()
     scaled_features = scaler.fit_transform(df_processed[cont_predictors_proc])
     df_processed_model = pd.DataFrame(scaled_features, columns=cont_predictors_proc)
@@ -515,50 +510,78 @@ def main():
         .values
     )
 
+    # Create List of Models and Metrics
+    model_list = ["Logistic Regression", "Random Forest", "LDA", "SVM"]
+    accuracy_list = []
+    auc_list = []
+    tpr_list = []
+    fpr_list = []
+
     # Log Regression
     log_model = LogisticRegression()
     log_model.fit(X_train, y_train)
+    log_model.fit(X_train, y_train)
+
     y_pred = log_model.predict(X_test)
-    print("Logistic Regression")
-    print("Accuracy: {:.2f}".format(accuracy_score(y_test, y_pred)))
+    accuracy_list.append(accuracy_score(y_test, y_pred))
     # roc https: // www.statology.org / plot - roc - curve - python /
     y_pred_prob_log = log_model.predict_proba(X_test)[::, 1]
-    auc_log = metrics.roc_auc_score(y_test, y_pred_prob_log)
-    print("ROC AUC Score: {:.3f}\n".format(auc_log))
+    auc_list.append(roc_auc_score(y_test, y_pred_prob_log))
+    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_log)
+    fpr_list.append(fpr)
+    tpr_list.append(tpr)
 
     # Random Forest
     # https: // machinelearningmastery.com / random - forest - ensemble - in -python /
     rf_model = RandomForestClassifier(random_state=1)
     rf_model.fit(X_train, y_train)
     y_pred = rf_model.predict(X_test)
-    rf_acc = accuracy_score(y_test, y_pred)
-    print("Random Forest Classifier")
-    print("Accuracy: {:.3f}".format(rf_acc))
+    accuracy_list.append(accuracy_score(y_test, y_pred))
     y_pred_prob_rf = rf_model.predict_proba(X_test)[::, 1]
-    auc_rf = metrics.roc_auc_score(y_test, y_pred_prob_rf)
-    print("ROC AUC Score: {:.3f}\n".format(auc_rf))
+    auc_list.append(roc_auc_score(y_test, y_pred_prob_rf))
+    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_rf)
+    fpr_list.append(fpr)
+    tpr_list.append(tpr)
 
     # LDA
     lda_model = LinearDiscriminantAnalysis()
     lda_model.fit(X_train, y_train)
     y_pred = lda_model.predict(X_test)
-    lda_acc = accuracy_score(y_test, y_pred)
-    print("LDA")
-    print("Accuracy: {:.3f}".format(lda_acc))
+    accuracy_list.append(accuracy_score(y_test, y_pred))
     y_pred_prob_lda = lda_model.predict_proba(X_test)[::, 1]
-    auc_lda = metrics.roc_auc_score(y_test, y_pred_prob_lda)
-    print("ROC AUC Score: {:.3f}\n".format(auc_lda))
+    auc_list.append(roc_auc_score(y_test, y_pred_prob_lda))
+    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_lda)
+    fpr_list.append(fpr)
+    tpr_list.append(tpr)
 
     # SVM
     svm_model = svm.SVC(probability=True)
     svm_model.fit(X_train, y_train)
     y_pred = svm_model.predict(X_test)
-    svm_acc = accuracy_score(y_test, y_pred)
-    print("SVM")
-    print("Accuracy: {:.3f}".format(svm_acc))
+    accuracy_list.append(accuracy_score(y_test, y_pred))
     y_pred_prob_svm = svm_model.predict_proba(X_test)[::, 1]
-    auc_svm = metrics.roc_auc_score(y_test, y_pred_prob_svm)
-    print("ROC AUC Score: {:.3f}\n".format(auc_svm))
+    auc_list.append(roc_auc_score(y_test, y_pred_prob_svm))
+    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_svm)
+    fpr_list.append(fpr)
+    tpr_list.append(tpr)
+
+    result_df = pd.DataFrame(
+        {"Model": model_list, "Accuracy": accuracy_list, "AUC": auc_list}
+    )
+
+    to_html_dict["Results"] = result_df
+
+    hh.create_html_file(
+        "index",
+        "Baseball Data Set",
+        to_html_dict.keys(),
+        to_html_dict.values(),
+        "describe",
+    )
+
+    # append roc plot to index
+    roc_plot_file = ppr.plot_confusion_matrix(model_list, fpr_list, tpr_list, auc_list)
+    hh.append_to_html_file(roc_plot_file, "./output/index.html")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 USER='root'
 PASS='root'
 HOST=db

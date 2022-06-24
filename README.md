@@ -22,19 +22,11 @@
 
 `pre-commit run --all-files`
 
-# HW 6
-
-Please enter user as root as set password in docker-compose.
-These credentials will be need for run_scripts.sh and homework5.py on line 317
-
-Outputs can be opened under index.html in the homework folder.
-
-Temporarily disabled flake8 after pre-commit due to conflict with black
-
-Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh
-
 # Final
-Please create password in docker compose for the database. 
+
+Please create password in docker compose for the database.
 Add this password as an argument for the db connection in line 385 of final.py
 
 For the output, check index.html in output.
+
+Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh
