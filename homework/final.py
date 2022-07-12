@@ -579,9 +579,13 @@ def main():
         "describe",
     )
 
+    # grid search, time series split, hyper parameter tuning
+    # create confusion matrix
     # append roc plot to index
     roc_plot_file = ppr.plot_confusion_matrix(model_list, fpr_list, tpr_list, auc_list)
     hh.append_to_html_file(roc_plot_file, "./output/index.html")
+
+    # flask and fix docker
 
 
 if __name__ == "__main__":
