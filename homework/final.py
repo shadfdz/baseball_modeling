@@ -383,9 +383,6 @@ def main():
 
     # get data
     connection = pymysql.connect(host="db", user="", password="", db="baseball")
-    # connection = pymysql.connect(
-    #     host="localhost", user="guest", password="squidgames", db="baseball"
-    # )
 
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
@@ -407,7 +404,7 @@ def main():
     to_html_dict = {
         "Top 5 Rows": df.head(5),
         "Bottom 5 Rows": df.tail(5),
-        "Data Summary": df.describe().reset_index(),
+        "Data Summary": df.describe(),
     }
 
     # plot predictors
@@ -512,6 +509,7 @@ def main():
 
     # Create List of Models and Metrics
     model_list = ["Logistic Regression", "Random Forest", "LDA", "SVM"]
+    labels = ["lose", "win"]
     accuracy_list = []
     auc_list = []
     tpr_list = []
@@ -530,6 +528,10 @@ def main():
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_log)
     fpr_list.append(fpr)
     tpr_list.append(tpr)
+    # create confusion matrix
+    log_model_cm = ppr.plot_confusion_matrix(
+        y_test, y_pred, labels, "Logistic Regression"
+    )
 
     # Random Forest
     # https: // machinelearningmastery.com / random - forest - ensemble - in -python /
@@ -537,11 +539,16 @@ def main():
     rf_model.fit(X_train, y_train)
     y_pred = rf_model.predict(X_test)
     accuracy_list.append(accuracy_score(y_test, y_pred))
+    # get auc and tpr and fpr for roc plot
     y_pred_prob_rf = rf_model.predict_proba(X_test)[::, 1]
     auc_list.append(roc_auc_score(y_test, y_pred_prob_rf))
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_rf)
     fpr_list.append(fpr)
     tpr_list.append(tpr)
+    # create confusion matrix
+    random_forest_cm = ppr.plot_confusion_matrix(
+        y_test, y_pred, labels, "Random Forest"
+    )
 
     # LDA
     lda_model = LinearDiscriminantAnalysis()
@@ -553,6 +560,8 @@ def main():
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_lda)
     fpr_list.append(fpr)
     tpr_list.append(tpr)
+    # create confusion matrix
+    lda_cm = ppr.plot_confusion_matrix(y_test, y_pred, labels, "LDA")
 
     # SVM
     svm_model = svm.SVC(probability=True)
@@ -564,6 +573,8 @@ def main():
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_svm)
     fpr_list.append(fpr)
     tpr_list.append(tpr)
+    # create confusion matrix
+    svm_cm = ppr.plot_confusion_matrix(y_test, y_pred, labels, "SVM")
 
     result_df = pd.DataFrame(
         {"Model": model_list, "Accuracy": accuracy_list, "AUC": auc_list}
@@ -579,13 +590,17 @@ def main():
         "describe",
     )
 
-    # grid search, time series split, hyper parameter tuning
-    # create confusion matrix
+    # append confusion matrices
+    hh.append_to_html_file(log_model_cm, "./output/index.html")
+    hh.append_to_html_file(random_forest_cm, "./output/index.html")
+    hh.append_to_html_file(lda_cm, "./output/index.html")
+    hh.append_to_html_file(svm_cm, "./output/index.html")
+
     # append roc plot to index
-    roc_plot_file = ppr.plot_confusion_matrix(model_list, fpr_list, tpr_list, auc_list)
+    roc_plot_file = ppr.plot_roc(model_list, fpr_list, tpr_list, auc_list)
     hh.append_to_html_file(roc_plot_file, "./output/index.html")
 
-    # flask and fix docker
+    # pickl the best model
 
 
 if __name__ == "__main__":

@@ -1,0 +1,11 @@
+flask
+numpy
+pandas
+scikit-learn
+plotly
+pyspark
+pyspark-stubs
+pymysql
+tabulate
+statsmodels
+xlsxwriter

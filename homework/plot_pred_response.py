@@ -288,7 +288,7 @@ def plot_correlation_matrix(df_corr, title, file):
     return file_name
 
 
-def plot_confusion_matrix(model_list, fpr_list, tpr_list, auc_list):
+def plot_roc(model_list, fpr_list, tpr_list, auc_list):
     fig = go.Figure()
     fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
 
@@ -312,4 +312,19 @@ def plot_confusion_matrix(model_list, fpr_list, tpr_list, auc_list):
         file=file_name,
         include_plotlyjs="cdn",
     )
+    return file_name
+
+
+def plot_confusion_matrix(y_true, y_pred, labels, model):
+    confusion_matrix_array = confusion_matrix(y_true, y_pred, normalize="all")
+    fig = px.imshow(confusion_matrix_array, text_auto=True, x=labels, y=labels)
+
+    fig.update_layout(title="Confusion Matrix - " + model)
+
+    file_name = "./output/cm_ " + model + ".html"
+    fig.write_html(
+        file=file_name,
+        include_plotlyjs="cdn",
+    )
+
     return file_name
