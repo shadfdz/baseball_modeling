@@ -6,7 +6,7 @@ WORKDIR /homework
 
 COPY ./output /output
 
-RUN apt-get update && apt-get upgrade && apt-get install -y default-mysql-client
+RUN apt-get update && apt-get install -y default-mysql-client
 
 ADD ./requirements.txt /homework/requirements.txt
 

@@ -47,17 +47,27 @@ class BinResponseByPredictor:
         self.bin_count = bin_count
 
     def bin_response_by_predictors(self, response, predictors):
+        bin_df_list = []
         for pred in predictors:
             if self.feature_type_dict.get(response) == "continuous":
                 if self.feature_type_dict.get(pred) == "continuous":
-                    return self.bin_cont_resp_cont_pred(response, pred, self.bin_count)
+                    bin_df_list.append(
+                        self.bin_cont_resp_cont_pred(response, pred, self.bin_count)
+                    )
                 else:
-                    return self.bin_cont_resp_cat_pred(response, pred, self.bin_count)
+                    bin_df_list.append(
+                        self.bin_cont_resp_cat_pred(response, pred, self.bin_count)
+                    )
             else:
                 if self.feature_type_dict.get(pred) == "boolean":
-                    return self.bin_cat_resp_cat_pred(response, pred, self.bin_count)
+                    bin_df_list.append(
+                        self.bin_cat_resp_cat_pred(response, pred, self.bin_count)
+                    )
                 else:
-                    return self.bin_cat_resp_cont_pred(response, pred, self.bin_count)
+                    bin_df_list.append(
+                        self.bin_cat_resp_cont_pred(response, pred, self.bin_count)
+                    )
+        return bin_df_list
 
     def bin_2d_response_by_predictors(self, resp, pred1, pred2, bin_counts):
         if (

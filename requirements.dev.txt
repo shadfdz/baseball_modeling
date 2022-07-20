@@ -65,7 +65,7 @@ idna==3.2
     #   requests
 ipykernel==6.4.1
     # via notebook
-ipython==7.27.0
+ipython==8.0.1
     # via
     #   ipykernel
     #   jupyterlab
@@ -106,7 +106,7 @@ jupyter-core==4.8.1
     #   nbconvert
     #   nbformat
     #   notebook
-jupyter-server==1.11.0
+jupyter-server==1.12.0
     # via
     #   jupyterlab
     #   jupyterlab-server

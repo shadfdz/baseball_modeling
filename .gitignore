@@ -152,6 +152,9 @@ static
 
 # Mac
 datasets/baseball.sql
+datasets/iris.csv
 .DS_Store
 scripts/sandbox.py
-
+db/baseball.sql
+archive/homework5.py
+/homework/output/
