@@ -27,6 +27,7 @@
 Please create password in docker compose for the database.
 Add this password as an argument for the db connection in line 385 of final.py
 
-For the output, check index.html in output.
+For the output, check index.html under the output folder.
+
 
 Credit to https://github.com/vishnubob/wait-for-it for wait-for-it.sh
