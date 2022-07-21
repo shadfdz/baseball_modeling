@@ -32,9 +32,9 @@ services:
       [
         "./wait-for-it.sh",
         "db:3306",
-        "--timeout=10",
-        "--quiet",
-        "--strict",
+        "--timeout=100",
+        "-q",
+        "-s",
         "--",
         "bash",
         "run_scripts.sh",

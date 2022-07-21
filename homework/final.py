@@ -382,7 +382,7 @@ def get_brute_force_tables(df, resp, predictors, feature_type_dict):
 def main():
 
     # get data
-    connection = pymysql.connect(host="db", user="", password="", db="baseball")
+    connection = pymysql.connect(host="", user="", password="", db="baseball")
 
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
