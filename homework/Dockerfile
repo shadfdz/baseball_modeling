@@ -4,7 +4,7 @@ FROM python:3.8-slim
 # set the working directory in the container
 WORKDIR /homework
 
-COPY ./output /output
+#COPY ./output /output
 
 RUN apt-get update && apt-get install -y default-mysql-client
 
@@ -15,6 +15,9 @@ RUN pip install -r requirements.txt
 
 # copy files to the working directory
 COPY . /homework
+
+# new command
+RUN mkdir -p ./homework/output
 
 # run script to alter db i.e rolling transform
 RUN chmod +x run_scripts.sh

@@ -14,7 +14,7 @@ from sklearn import svm
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
+from sklearn.metrics import precision_score, roc_auc_score, roc_curve
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 
@@ -382,7 +382,7 @@ def get_brute_force_tables(df, resp, predictors, feature_type_dict):
 def main():
 
     # get data
-    connection = pymysql.connect(host="", user="", password="", db="baseball")
+    connection = pymysql.connect(host="", user="", password="", db="")
 
     cursor = connection.cursor()
     query = "Select * from baseball_stats;"
@@ -510,7 +510,7 @@ def main():
     # Create List of Models and Metrics
     model_list = ["Logistic Regression", "Random Forest", "LDA", "SVM"]
     labels = ["lose", "win"]
-    accuracy_list = []
+    precision_list = []
     auc_list = []
     tpr_list = []
     fpr_list = []
@@ -521,7 +521,7 @@ def main():
     log_model.fit(X_train, y_train)
 
     y_pred = log_model.predict(X_test)
-    accuracy_list.append(accuracy_score(y_test, y_pred))
+    precision_list.append(precision_score(y_test, y_pred))
     # roc https: // www.statology.org / plot - roc - curve - python /
     y_pred_prob_log = log_model.predict_proba(X_test)[::, 1]
     auc_list.append(roc_auc_score(y_test, y_pred_prob_log))
@@ -538,7 +538,7 @@ def main():
     rf_model = RandomForestClassifier(random_state=1)
     rf_model.fit(X_train, y_train)
     y_pred = rf_model.predict(X_test)
-    accuracy_list.append(accuracy_score(y_test, y_pred))
+    precision_list.append(precision_score(y_test, y_pred))
     # get auc and tpr and fpr for roc plot
     y_pred_prob_rf = rf_model.predict_proba(X_test)[::, 1]
     auc_list.append(roc_auc_score(y_test, y_pred_prob_rf))
@@ -554,7 +554,7 @@ def main():
     lda_model = LinearDiscriminantAnalysis()
     lda_model.fit(X_train, y_train)
     y_pred = lda_model.predict(X_test)
-    accuracy_list.append(accuracy_score(y_test, y_pred))
+    precision_list.append(precision_score(y_test, y_pred))
     y_pred_prob_lda = lda_model.predict_proba(X_test)[::, 1]
     auc_list.append(roc_auc_score(y_test, y_pred_prob_lda))
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_lda)
@@ -567,7 +567,7 @@ def main():
     svm_model = svm.SVC(probability=True)
     svm_model.fit(X_train, y_train)
     y_pred = svm_model.predict(X_test)
-    accuracy_list.append(accuracy_score(y_test, y_pred))
+    precision_list.append(precision_score(y_test, y_pred))
     y_pred_prob_svm = svm_model.predict_proba(X_test)[::, 1]
     auc_list.append(roc_auc_score(y_test, y_pred_prob_svm))
     fpr, tpr, _ = roc_curve(y_test, y_pred_prob_svm)
@@ -577,7 +577,7 @@ def main():
     svm_cm = ppr.plot_confusion_matrix(y_test, y_pred, labels, "SVM")
 
     result_df = pd.DataFrame(
-        {"Model": model_list, "Accuracy": accuracy_list, "AUC": auc_list}
+        {"Model": model_list, "Precision": precision_list, "AUC": auc_list}
     )
 
     to_html_dict["Results"] = result_df
