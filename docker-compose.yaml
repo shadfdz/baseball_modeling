@@ -28,17 +28,7 @@ services:
       - ./homework/output:/homework/output
     depends_on:
       - db
-    command:
-      [
-        "./wait-for-it.sh",
-        "db:3306",
-        "--timeout=100",
-        "-q",
-        "-s",
-        "--",
-        "bash",
-        "run_scripts.sh",
-      ]
+    command: ["bash", "run_scripts.sh"]
 #
 networks:
   backend:

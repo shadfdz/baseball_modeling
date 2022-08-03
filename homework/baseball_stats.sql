@@ -27,6 +27,7 @@ Select
 from pitcher_counts pc
 join game g on pc.game_id = g.game_id;
 
+
 DROP TEMPORARY TABLE IF EXISTS rolling_starting_pitch;
 CREATE TEMPORARY TABLE rolling_starting_pitch ENGINE=MEMORY AS
 Select rlsp.game_id,
@@ -210,6 +211,7 @@ CREATE INDEX rolling_lookup_team_id_idx ON rolling_team_batting_stats2 (team_id)
 
 -- Drop unused lookup tables
 DROP TEMPORARY TABLE IF EXISTS t_rolling_lookup_team_batting;
+
 /*****************************************************************************
                         Create tables for avg pitchers in game
  *****************************************************************************/

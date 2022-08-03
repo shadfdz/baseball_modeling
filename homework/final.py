@@ -14,7 +14,7 @@ from sklearn import svm
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import precision_score, roc_auc_score, roc_curve
+from sklearn.metrics import accuracy_score, precision_score
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 
@@ -512,8 +512,6 @@ def main():
     labels = ["lose", "win"]
     precision_list = []
     auc_list = []
-    tpr_list = []
-    fpr_list = []
 
     # Log Regression
     log_model = LogisticRegression()
@@ -523,12 +521,7 @@ def main():
     y_pred = log_model.predict(X_test)
     precision_list.append(precision_score(y_test, y_pred))
     # roc https: // www.statology.org / plot - roc - curve - python /
-    y_pred_prob_log = log_model.predict_proba(X_test)[::, 1]
-    auc_list.append(roc_auc_score(y_test, y_pred_prob_log))
-    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_log)
-    fpr_list.append(fpr)
-    tpr_list.append(tpr)
-    # create confusion matrix
+    auc_list.append(accuracy_score(y_test, y_pred))
     log_model_cm = ppr.plot_confusion_matrix(
         y_test, y_pred, labels, "Logistic Regression"
     )
@@ -540,12 +533,7 @@ def main():
     y_pred = rf_model.predict(X_test)
     precision_list.append(precision_score(y_test, y_pred))
     # get auc and tpr and fpr for roc plot
-    y_pred_prob_rf = rf_model.predict_proba(X_test)[::, 1]
-    auc_list.append(roc_auc_score(y_test, y_pred_prob_rf))
-    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_rf)
-    fpr_list.append(fpr)
-    tpr_list.append(tpr)
-    # create confusion matrix
+    auc_list.append(accuracy_score(y_test, y_pred))
     random_forest_cm = ppr.plot_confusion_matrix(
         y_test, y_pred, labels, "Random Forest"
     )
@@ -555,12 +543,7 @@ def main():
     lda_model.fit(X_train, y_train)
     y_pred = lda_model.predict(X_test)
     precision_list.append(precision_score(y_test, y_pred))
-    y_pred_prob_lda = lda_model.predict_proba(X_test)[::, 1]
-    auc_list.append(roc_auc_score(y_test, y_pred_prob_lda))
-    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_lda)
-    fpr_list.append(fpr)
-    tpr_list.append(tpr)
-    # create confusion matrix
+    auc_list.append(accuracy_score(y_test, y_pred))
     lda_cm = ppr.plot_confusion_matrix(y_test, y_pred, labels, "LDA")
 
     # SVM
@@ -568,16 +551,11 @@ def main():
     svm_model.fit(X_train, y_train)
     y_pred = svm_model.predict(X_test)
     precision_list.append(precision_score(y_test, y_pred))
-    y_pred_prob_svm = svm_model.predict_proba(X_test)[::, 1]
-    auc_list.append(roc_auc_score(y_test, y_pred_prob_svm))
-    fpr, tpr, _ = roc_curve(y_test, y_pred_prob_svm)
-    fpr_list.append(fpr)
-    tpr_list.append(tpr)
-    # create confusion matrix
+    auc_list.append(accuracy_score(y_test, y_pred))
     svm_cm = ppr.plot_confusion_matrix(y_test, y_pred, labels, "SVM")
 
     result_df = pd.DataFrame(
-        {"Model": model_list, "Precision": precision_list, "AUC": auc_list}
+        {"Model": model_list, "Precision": precision_list, "Accuracy": auc_list}
     )
 
     to_html_dict["Results"] = result_df
@@ -595,10 +573,6 @@ def main():
     hh.append_to_html_file(random_forest_cm, "./output/index.html")
     hh.append_to_html_file(lda_cm, "./output/index.html")
     hh.append_to_html_file(svm_cm, "./output/index.html")
-
-    # append roc plot to index
-    roc_plot_file = ppr.plot_roc(model_list, fpr_list, tpr_list, auc_list)
-    hh.append_to_html_file(roc_plot_file, "./output/index.html")
 
     # pickl the best model
 

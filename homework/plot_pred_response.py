@@ -39,30 +39,19 @@ def cat_resp_cont_pred(df, response, predictor):
     :param predictor: predictor
     :return: file path of plot
     """
-    df_plot_temp = df[df[predictor].notnull()]
-    categories = df_plot_temp[response].unique()
-    x1 = df_plot_temp[predictor][df_plot_temp[response] == categories[0]]
-    x2 = df_plot_temp[predictor][df_plot_temp[response] == categories[1]]
-    categories = df_plot_temp[response].unique()
-
-    hist_data = [x1, x2]
-
-    group_labels = [
-        "Response = " + str(categories[0]),
-        "Response = " + str(categories[1]),
-    ]
-
+    categories = df[response].unique()
     fig = go.Figure()
-    for curr_hist, curr_group in zip(hist_data, group_labels):
+    for cat in categories:
         fig.add_trace(
             go.Violin(
-                x=np.repeat(curr_group, len(curr_group)),
-                y=curr_hist,
-                name=curr_group,
+                x=df.loc[(df[response] == cat), response],
+                y=df.loc[(df[response] == cat), predictor],
+                name=cat,
                 box_visible=True,
                 meanline_visible=True,
             )
         )
+
     fig.update_layout(
         title=response + " by " + predictor,
         xaxis_title=response,

@@ -147,7 +147,7 @@ class BinResponseByPredictor:
             bin_counts = self.bin_count
         # dummy response
         dum_resp_df = pd.get_dummies(self.df[response])
-        self.df["DummyResponse"] = dum_resp_df.iloc[:, 0]
+        self.df["DummyResponse"] = dum_resp_df.iloc[:, 1]
 
         # Cut df by 10 bins using predictor
         self.df["bin_cat"], bin_array = pd.cut(x=self.df[pred], bins=10, retbins=True)
